@@ -3,7 +3,7 @@
 (require json (only-in fpbench fpcore? supported-by-lang? core->js js-header))
 (require "../syntax/read.rkt" "../syntax/sugar.rkt" "../syntax/syntax.rkt" "../syntax/types.rkt"
          "../alternative.rkt" "../float.rkt" "../points.rkt" "../sandbox.rkt"
-         "common.rkt" "timeline.rkt" "plot.rkt" "make-graph.rkt" "traceback.rkt")
+         "common.rkt" "timeline.rkt" "plot.rkt" "make-graph.rkt" "traceback.rkt" "make-graph-json.rkt")
 (provide all-pages make-page page-error-handler)
 
 (define (unique-values pts idx)
@@ -11,7 +11,7 @@
 
 (define (all-pages result)
   (define good? (eq? (job-result-status result) 'success))
-  (define default-pages '("graph.html" "timeline.html" "timeline.json"))
+  (define default-pages '("graph.html" "jsongraph.html" "timeline.html" "timeline.json"))
   (define success-pages '("interactive.js" "points.json"))
   (append default-pages (if good? success-pages empty)))
 
@@ -29,6 +29,12 @@
     ["graph.html"
      (match status
        ['success (make-graph result out output? (get-interactive-js result ctx) profile?)]
+       ['timeout (make-traceback result out profile?)]
+       ['failure (make-traceback result out profile?)]
+       [_ (error 'make-page "unknown result type ~a" status)])]
+    ["jsongraph.html"
+     (match status
+       ['success (make-bench-page result out output? (get-interactive-js result ctx) profile?)]
        ['timeout (make-traceback result out profile?)]
        ['failure (make-traceback result out profile?)]
        [_ (error 'make-page "unknown result type ~a" status)])]
