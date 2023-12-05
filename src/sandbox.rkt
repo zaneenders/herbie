@@ -162,17 +162,24 @@
   (define-values (train-pcontext test-pcontext)
     (split-pcontext joint-pcontext (*num-points*) (*reeval-pts*)))
   ;; TODO: Ignoring all user-provided preprocessing right now
+  ;; preprocessing will not exist in the future, do not utilize
   (define-values (end-alts preprocessing)
     (run-improve! (test-input test) (test-spec test) (*context*) train-pcontext))
+  ;; TODO: depricate
   (define test-pcontext*
     (preprocess-pcontext ctx test-pcontext preprocessing))
+
+  (define test-pcontext-list
+    (for/list ([altn end-alts])
+      (preprocess-pcontext ctx test-pcontext (alt-preprocessing altn))))
+
   (when seed (set-seed! seed))
   
   ;; compute error/cost for input expression
   (define start-expr (test-input test))
   (define start-alt (make-alt start-expr))
   (define start-train-errs (errors start-expr train-pcontext ctx))
-  (define start-test-errs (errors start-expr test-pcontext* ctx))
+  (define start-test-errs (errors start-expr '() ctx)) ;; test-pcontext* -> '() Why are we computing with preprocessing for the spec??
   (define start-alt-data (alt-analysis start-alt start-train-errs start-test-errs))
 
   ;; optionally compute error/cost for input expression
@@ -181,7 +188,7 @@
       [(test-output test)
        (define target-expr (test-output test))
        (define target-train-errs (errors target-expr train-pcontext ctx))
-       (define target-test-errs (errors target-expr test-pcontext* ctx))
+       (define target-test-errs (errors target-expr '() ctx))
        (alt-analysis (make-alt target-expr) target-train-errs target-test-errs)]
       [else
        #f]))
@@ -189,6 +196,10 @@
   ;; compute error/cost for output expression
   (define end-exprs (map alt-expr end-alts))
   (define end-train-errs (flip-lists (batch-errors end-exprs train-pcontext ctx)))
+  ;; TODO  uncomment & replace on next commit, piece meal and all that
+  ;;; (define end-test-errs
+  ;;;   (for/list ([altn end-alts] [pctx test-pcontext-list]) ;; flip lists here?
+  ;;;     (errors (alt-expr altn) pctx ctx)))
   (define end-test-errs (flip-lists (batch-errors end-exprs test-pcontext* ctx)))
   (define end-alts-data (map alt-analysis end-alts end-train-errs end-test-errs))
 
