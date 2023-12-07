@@ -167,7 +167,7 @@
     (run-improve! (test-input test) (test-spec test) (*context*) train-pcontext))
   ;; TODO: depricate
   (define test-pcontext*
-    (preprocess-pcontext ctx test-pcontext preprocessing))
+    (preprocess-pcontext ctx test-pcontext '()))
 
   (define test-pcontext-list
     (for/list ([altn end-alts])
@@ -179,7 +179,7 @@
   (define start-expr (test-input test))
   (define start-alt (make-alt start-expr))
   (define start-train-errs (errors start-expr train-pcontext ctx))
-  (define start-test-errs (errors start-expr '() ctx)) ;; test-pcontext* -> '() Why are we computing with preprocessing for the spec??
+  (define start-test-errs (errors start-expr test-pcontext* ctx)) ;; test-pcontext* -> '() Why are we computing with preprocessing for the spec??
   (define start-alt-data (alt-analysis start-alt start-train-errs start-test-errs))
 
   ;; optionally compute error/cost for input expression
@@ -188,7 +188,7 @@
       [(test-output test)
        (define target-expr (test-output test))
        (define target-train-errs (errors target-expr train-pcontext ctx))
-       (define target-test-errs (errors target-expr '() ctx))
+       (define target-test-errs (errors target-expr test-pcontext* ctx))
        (alt-analysis (make-alt target-expr) target-train-errs target-test-errs)]
       [else
        #f]))
@@ -202,7 +202,9 @@
   ;;;     (errors (alt-expr altn) pctx ctx)))
   (define end-test-errs (flip-lists (batch-errors end-exprs test-pcontext* ctx)))
   (define end-alts-data (map alt-analysis end-alts end-train-errs end-test-errs))
-
+;;; (struct job-result (test status time timeline warnings backend))
+;;; (struct improve-result (preprocess pctxs start target end bogosity))
+;;; (struct alt-analysis (alt train-errors test-errors))
   ;; bundle up the result
   (timeline-adjust! 'regimes 'name (test-name test))
   (timeline-adjust! 'regimes 'link ".")
