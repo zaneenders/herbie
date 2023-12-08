@@ -139,10 +139,10 @@
   ;; TODO: Ignoring all user-provided preprocessing right now
   (define-values (alternatives preprocessing)
     (run-improve! (test-input test) (test-spec test) (*context*) train-pcontext))
-  (define test-pcontext*
-    (preprocess-pcontext (*context*) test-pcontext preprocessing))
+  (define spec-pcontext
+    (preprocess-pcontext (*context*) test-pcontext '()))
   (when seed (set-seed! seed))
-  (list alternatives test-pcontext test-pcontext*))
+  (list alternatives test-pcontext spec-pcontext))
 
 ;; Improvement backend for generating reports
 ;; A more heavyweight version of `get-alternatives`
@@ -166,7 +166,7 @@
   (define-values (end-alts preprocessing)
     (run-improve! (test-input test) (test-spec test) (*context*) train-pcontext))
   ;; TODO: depricate
-  (define test-pcontext*
+  (define spec-pcontext
     (preprocess-pcontext ctx test-pcontext '()))
 
   (define test-pcontext-list
@@ -179,7 +179,7 @@
   (define start-expr (test-input test))
   (define start-alt (make-alt start-expr))
   (define start-train-errs (errors start-expr train-pcontext ctx))
-  (define start-test-errs (errors start-expr test-pcontext* ctx)) ;; test-pcontext* -> '() Why are we computing with preprocessing for the spec??
+  (define start-test-errs (errors start-expr spec-pcontext ctx)) ;; test-pcontext* -> '() Why are we computing with preprocessing for the spec??
   (define start-alt-data (alt-analysis start-alt start-train-errs start-test-errs))
 
   ;; optionally compute error/cost for input expression
@@ -188,7 +188,7 @@
       [(test-output test)
        (define target-expr (test-output test))
        (define target-train-errs (errors target-expr train-pcontext ctx))
-       (define target-test-errs (errors target-expr test-pcontext* ctx))
+       (define target-test-errs (errors target-expr spec-pcontext ctx))
        (alt-analysis (make-alt target-expr) target-train-errs target-test-errs)]
       [else
        #f]))
@@ -197,19 +197,27 @@
   (define end-exprs (map alt-expr end-alts))
   (define end-train-errs (flip-lists (batch-errors end-exprs train-pcontext ctx)))
   ;; TODO  uncomment & replace on next commit, piece meal and all that
-  ;;; (define end-test-errs
-  ;;;   (for/list ([altn end-alts] [pctx test-pcontext-list]) ;; flip lists here?
-  ;;;     (errors (alt-expr altn) pctx ctx)))
-  (define end-test-errs (flip-lists (batch-errors end-exprs test-pcontext* ctx)))
+  (define end-test-errs
+    (for/list ([altn end-alts] [pctx test-pcontext-list]) ;;; flip lists or no
+      (errors (alt-expr altn) pctx ctx)))
+  ;;; TODO: covert to map? apply ctx @ every iter?
+  ;;; (define end-test-errs (flip-lists (map errors end-alts test-pcontext-list ctx)))
+  ;;; (define end-test-errs (flip-lists (batch-errors end-exprs test-pcontext* ctx)))
   (define end-alts-data (map alt-analysis end-alts end-train-errs end-test-errs))
-;;; (struct job-result (test status time timeline warnings backend))
-;;; (struct improve-result (preprocess pctxs start target end bogosity))
-;;; (struct alt-analysis (alt train-errors test-errors))
+
   ;; bundle up the result
   (timeline-adjust! 'regimes 'name (test-name test))
   (timeline-adjust! 'regimes 'link ".")
 
-  (define pctxs (list train-pcontext test-pcontext*))
+
+  ;; TODO Q's 12/7
+  ;; what do with pctxs? now that is a list of trainingpctx & list of testpctxs (vs single test)
+  ;;    don't think it matters?
+  ;; do we even use the get-alternatives version?
+  ;; map with list & constant variable to apply each time
+
+
+  (define pctxs (list train-pcontext spec-pcontext)) ;;; TODO What do??
   (improve-result preprocessing pctxs start-alt-data target-alt-data end-alts-data domain-stats))
 
 ;;

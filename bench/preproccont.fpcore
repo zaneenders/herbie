@@ -5,6 +5,7 @@
  (sqrt ( + (* x x) (* y y) (* z z))))
 
 (FPCore (x y)
+ :all basics
  :precision binary64
  (+
   (+
