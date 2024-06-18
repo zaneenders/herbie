@@ -41,7 +41,7 @@
         [else
          (loop precision*)])))
   (define time (- (current-inexact-milliseconds) start))
-  (timeline-push!/unsafe 'outcomes time final-prec (~a status) 1)
+  ;(timeline-push!/unsafe 'outcomes time final-prec (~a status) 1)
   (values status final-prec value time))
 
 ;; Returns a function that maps an ival to a list of ivals

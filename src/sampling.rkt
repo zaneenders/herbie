@@ -1,10 +1,12 @@
 #lang racket
 (require math/bigfloat rival math/base
+         math/flonum
          (only-in fpbench interval range-table-ref condition->range-table [expr? fpcore-expr?]))
 (require "searchreals.rkt" "errors.rkt" "common.rkt"
          "float.rkt" "syntax/types.rkt" "timeline.rkt" "config.rkt"
          "syntax/sugar.rkt"
-         "baseline.rkt")
+         "baseline.rkt"
+         "sollya.rkt")
 
 (provide batch-prepare-points
          eval-progs-real
@@ -146,15 +148,17 @@
       (parameterize ([*rival-max-precision* (*max-mpfr-prec*)]
                      [*rival-max-iterations* 5])
         (values 'valid (rest (vector->list (rival-apply machine pt*))))))) ; rest = drop precondition
-  (when (> (rival-profile machine 'bumps) 0)
+
+  
+  #;(when (> (rival-profile machine 'bumps) 0)
     (warn 'ground-truth "Could not converge on a ground truth"
           #:extra (for/list ([var (in-list (context-vars (car ctxs)))] [val (in-list pt)])
                     (format "~a = ~a" var val))))
-  (define executions (rival-profile machine 'executions))
-  (when (>= (vector-length executions) (*rival-profile-executions*))
+  #;(define executions (rival-profile machine 'executions))
+  #;(when (>= (vector-length executions) (*rival-profile-executions*))
     (warn 'profile "Rival profile vector overflowed, profile may not be complete"))
-  (define prec-threshold (exact-floor (/ (*max-mpfr-prec*) 25)))
-  (for ([execution (in-vector executions)])
+  #;(define prec-threshold (exact-floor (/ (*max-mpfr-prec*) 25)))
+  #;(for ([execution (in-vector executions)])
     (define name (symbol->string (execution-name execution)))
     (define precision (- (execution-precision execution)
                          (remainder (execution-precision execution) prec-threshold)))
@@ -162,7 +166,7 @@
 
   (define time (- (current-inexact-milliseconds) start))
   (define final-iter (rival-profile machine 'iterations))
-  (timeline-push!/unsafe 'outcomes time
+  #;(timeline-push!/unsafe 'outcomes time
                          (rival-profile machine 'iterations) (~a status) 1)
   (values status value time final-iter))
 
@@ -180,7 +184,7 @@
 
 ;; Part 3: computing exact values by recomputing at higher precisions
 
-(define (batch-prepare-points fn ctxs sampler [fn-baseline #f])
+(define (batch-prepare-points fn ctxs sampler fn-baseline fn-sollya)
   (rival-profile fn 'executions) ; Clear profiling vector
   ;; If we're using the bf fallback, start at the max precision
   (define outcomes (make-hash))
@@ -200,11 +204,10 @@
         (collect-garbage 'incremental)
         (define-values (rival-status rival-exs rival-time rival-final-iter) (ival-eval fn ctxs pt))
         (collect-garbage 'incremental)
-        (define-values (base-status base-precision base-exs base-time)
-          (if fn-baseline
-              (ival-eval-baseline fn-baseline ctxs pt)
-              (values #f #f #f #f)))
+        (define-values (base-status base-precision base-exs base-time) (ival-eval-baseline fn-baseline ctxs pt))
         (collect-garbage 'incremental)
+
+        (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-status base-time)
 
         (when (equal? rival-status 'exit)
           (warn 'ground-truth #:url "faq.html#ground-truth"
@@ -245,15 +248,123 @@
 
 (define (sample-points pre exprs ctxs)
   (timeline-event! 'analyze)
+  
   (define fn (make-search-func (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
   (define fn-baseline (make-search-func-baseline (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
+  (match-define-values (fn-sollya kill-sollya-process) (run-sollya (list exprs ctxs)))
+  
   (match-define (cons sampler table)
     (make-sampler (first ctxs) pre fn))
   (timeline-event! 'sample)
-  (match-define (cons table2 results) (batch-prepare-points fn ctxs sampler fn-baseline))
+  
+  (match-define (cons table2 results) (batch-prepare-points fn ctxs sampler fn-baseline fn-sollya))
+  (kill-sollya-process)
+  
   (define total (apply + (hash-values table2)))
   (when (> (hash-ref table2 'infinite 0.0) (* 0.2 total))
    (warn 'inf-points #:url "faq.html#inf-points"
     "~a of points produce a very large (infinite) output. You may want to add a precondition." 
     (format-accuracy (- total (hash-ref table2 'infinite)) total #:unit "%")))
   (cons (combine-tables table table2) results))
+
+
+(define (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time baseline-status baseline-time)
+  (cond
+    ; Rival has produced valid outcomes
+    [(equal? rival-status 'valid)
+
+     ; Sollya Point evaluation
+     (match-define (list internal-point-time external-point-time sollya-point sollya-point-status) (fn-sollya pt #f))
+         
+     (define match (if (and (equal? sollya-point-status 'valid)
+                            (<= 2 (flonums-between (last rival-exs) sollya-point)))
+                       #t
+                       #f))
+
+     ; When a point failed for Sollya - try to relaunch
+     (when match
+       (sleep 0.1)
+       (match-define (list internal-point-time* external-point-time* sollya-point* sollya-point-status*) (fn-sollya pt #f))
+       (set! match (if (and (equal? sollya-point-status* 'valid)
+                            (<= 2 (flonums-between (last rival-exs) sollya-point*)))
+                       #t
+                       #f))
+       (set! sollya-point sollya-point*)
+       (set! sollya-point-status sollya-point-status*)
+       (set! external-point-time external-point-time*))
+
+     (cond
+       [(and (equal? 'valid sollya-point-status) (equal? 'valid baseline-status) (equal? rival-status 'valid)
+             (< external-point-time (*sampling-timeout*)) (< baseline-time (*sampling-timeout*)) (< rival-time (*sampling-timeout*)))
+        (timeline-push!/unsafe 'outcomes external-point-time
+                               rival-final-iter (format "~a-sollya" sollya-point-status) 1)
+        (timeline-push!/unsafe 'outcomes baseline-time
+                               rival-final-iter (format "~a-baseline" baseline-status) 1)
+        (timeline-push!/unsafe 'outcomes rival-time
+                               rival-final-iter (format "~a-rival" rival-status) 1)]
+       
+       [(and (equal? 'valid baseline-status) (equal? rival-status 'valid)
+             (< baseline-time (*sampling-timeout*)) (< rival-time (*sampling-timeout*)))
+        (timeline-push!/unsafe 'outcomes baseline-time
+                               rival-final-iter (format "~a-baseline+rival" baseline-status) 1)
+        (timeline-push!/unsafe 'outcomes rival-time
+                               rival-final-iter (format "~a-rival+baseline" rival-status) 1)
+        (when (equal? (last rival-exs) (fl 0.0))
+          (timeline-push!/unsafe 'outcomes rival-time
+                                 rival-final-iter (format "~a-rival+baseline-zero" rival-status) 1))
+        (when (flinfinite? (last rival-exs))
+          (timeline-push!/unsafe 'outcomes rival-time
+                                 rival-final-iter (format "~a-rival+baseline-inf" rival-status) 1))]
+       
+       [(and (equal? 'valid sollya-point-status) (equal? rival-status 'valid)
+             (< external-point-time (*sampling-timeout*)) (< rival-time (*sampling-timeout*)))
+        (timeline-push!/unsafe 'outcomes external-point-time
+                               rival-final-iter (format "~a-sollya+rival" sollya-point-status) 1)
+        (timeline-push!/unsafe 'outcomes rival-time
+                               rival-final-iter (format "~a-rival+sollya" rival-status) 1)]
+       
+       [(and (equal? rival-status 'valid)
+             (< rival-time (*sampling-timeout*)))
+        (timeline-push!/unsafe 'outcomes rival-time
+                               rival-final-iter (format "~a-rival-only" rival-status) 1)])
+     
+     (when match
+       (warn 'ground-truth (format "Sollya didn't converge on: pt=~a, sollya-point=~a, rival-point=~a\n" pt sollya-point (last rival-exs))))]
+
+    ; Rival has exited, rival-exs=#f, nothing to compare to Sollya's output
+    [(equal? rival-status 'exit)
+     
+     ; Sollya Point evaluation
+     (match-define (list internal-point-time external-point-time sollya-point sollya-point-status) (fn-sollya pt #f))
+
+     (cond
+       [(and (equal? 'valid sollya-point-status) (equal? 'valid baseline-status)
+             (< external-point-time (*sampling-timeout*)) (< baseline-time (*sampling-timeout*)))
+        (timeline-push!/unsafe 'outcomes external-point-time
+                               rival-final-iter (format "~a-sollya+baseline" sollya-point-status) 1)
+        (timeline-push!/unsafe 'outcomes baseline-time
+                               rival-final-iter (format "~a-baseline+sollya" baseline-status) 1)]
+       
+       [(and (equal? 'valid sollya-point-status) (< external-point-time (*sampling-timeout*)))
+        (when (equal? (fl 0.0) sollya-point)
+          (timeline-push!/unsafe 'outcomes external-point-time
+                               rival-final-iter (format "~a-sollya-only-zero" sollya-point-status) 1))
+        (timeline-push!/unsafe 'outcomes external-point-time
+                               rival-final-iter (format "~a-sollya-only" sollya-point-status) 1)]
+       
+       [(and (equal? 'valid baseline-status) (< baseline-time (*sampling-timeout*)))
+        (timeline-push!/unsafe 'outcomes baseline-time
+                               rival-final-iter (format "~a-baseline-only" baseline-status) 1)])
+         
+     #;(define match (or (equal? sollya-point-status rival-status)
+                       (and (equal? sollya-point-status 'invalid)
+                            (equal? rival-status 'unsamplable))
+                       (and (equal? sollya-point-status 'unsamplable)
+                            (equal? rival-status 'invalid))))
+     
+     #;(unless match
+       (timeline-push!/unsafe 'sollya-eval
+                              pt (~a rival-exs) (~a sollya-point)
+                              (symbol->string rival-status) (symbol->string sollya-point-status)
+                              rival-final-iter sollya-iter
+                              external-point-time))]))
