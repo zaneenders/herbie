@@ -88,6 +88,7 @@
 
 ;; Maximum MPFR precision allowed during exact evaluation
 (define *max-mpfr-prec* (make-parameter 10000))
+(define *start-prec* (make-parameter 256))
 
 ;; The maximum size of an egraph
 (define *node-limit* (make-parameter 8000))

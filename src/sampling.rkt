@@ -3,7 +3,8 @@
          (only-in fpbench interval range-table-ref condition->range-table [expr? fpcore-expr?]))
 (require "searchreals.rkt" "errors.rkt" "common.rkt"
          "float.rkt" "syntax/types.rkt" "timeline.rkt" "config.rkt"
-         "syntax/sugar.rkt")
+         "syntax/sugar.rkt"
+         "baseline.rkt")
 
 (provide batch-prepare-points
          eval-progs-real
@@ -29,16 +30,6 @@
     ['bool (ival #f #t)]))
 
 (module+ test (require rackunit))
-
-#;(module+ test
-  (require  "load-plugin.rkt")
-  (load-herbie-builtins)
-
-  (check-equal? (precondition->hyperrects
-                 '(and (and (<= 0 a) (<= a 1))
-                       (and (<= 0 b) (<= b 1)))
-                 (make-debug-context '(a b)))
-                (list (list (ival (bf 0.0) (bf 1.0)) (ival (bf 0.0) (bf 1.0))))))
 
 ;; Part 2: using subdivision search to find valid intervals
 
@@ -99,13 +90,6 @@
     (define his (vector-ref hi-ends idx))
     (for/list ([lo (in-list los)] [hi (in-list his)] [repr (in-list reprs)])
       ((representation-ordinal->repr repr) (random-integer lo hi)))))
-
-#;(module+ test
-  (define two-point-hyperrects (list (list (ival (bf 0) (bf 0)) (ival (bf 1) (bf 1)))))
-  (define repr (get-representation 'binary64))
-  (check-true
-   (andmap (curry set-member? '(0.0 1.0))
-           ((make-hyperrect-sampler two-point-hyperrects (list repr repr))))))
 
 (define (make-sampler ctx pre search-func)
   (define repr (context-repr ctx))
@@ -175,9 +159,12 @@
     (define precision (- (execution-precision execution)
                          (remainder (execution-precision execution) prec-threshold)))
     (timeline-push!/unsafe 'mixsample (execution-time execution) name precision))
-  (timeline-push!/unsafe 'outcomes (- (current-inexact-milliseconds) start)
+
+  (define time (- (current-inexact-milliseconds) start))
+  (define final-iter (rival-profile machine 'iterations))
+  (timeline-push!/unsafe 'outcomes time
                          (rival-profile machine 'iterations) (~a status) 1)
-  (values status value))
+  (values status value time final-iter))
 
 ; ENSURE: all contexts have the same list of variables
 (define (eval-progs-real progs ctxs)
@@ -193,44 +180,56 @@
 
 ;; Part 3: computing exact values by recomputing at higher precisions
 
-(define (batch-prepare-points fn ctxs sampler)
+(define (batch-prepare-points fn ctxs sampler fn-baseline)
   (rival-profile fn 'executions) ; Clear profiling vector
   ;; If we're using the bf fallback, start at the max precision
   (define outcomes (make-hash))
+  
+  (define output-prec
+    (match (representation-name (context-repr (car ctxs)))
+      ['binary64 53]
+      ['binary32 24]))
 
   (define-values (points exactss)
-    (let loop ([sampled 0] [skipped 0] [points '()] [exactss '()])
-      (define pt (sampler))
+    (parameterize ([*max-mpfr-prec* (* (+ 10 output-prec) 512)]  ; same as sollya's max precision
+                   [*rival-max-precision* (* (+ 10 output-prec) 512)]
+                   [*start-prec* (+ 20 output-prec)])            ; same as sollya's first pass
+      (let loop ([sampled 0] [skipped 0] [points '()] [exactss '()])
+        (define pt (sampler))
+      
+        (collect-garbage 'incremental)
+        (define-values (rival-status rival-exs rival-time rival-final-iter) (ival-eval fn ctxs pt))
+        (collect-garbage 'incremental)
+        (define-values (base-status base-precision base-exs base-time) (ival-eval-baseline fn-baseline ctxs pt))
+        (collect-garbage 'incremental)
 
-      (define-values (status exs) (ival-eval fn ctxs pt))
+        (when (equal? rival-status 'exit)
+          (warn 'ground-truth #:url "faq.html#ground-truth"
+                "could not determine a ground truth"
+                #:extra (for/list ([var (context-vars (first ctxs))] [val pt])
+                          (format "~a = ~a" var val))))
 
-      (when (equal? status 'exit)
-        (warn 'ground-truth #:url "faq.html#ground-truth"
-              "could not determine a ground truth"
-              #:extra (for/list ([var (context-vars (first ctxs))] [val pt])
-                        (format "~a = ~a" var val))))
+        (when (equal? rival-status 'valid)
+          (for ([ex (in-list rival-exs)])
+            (when (and (flonum? ex) (infinite? ex))
+              (set! rival-status 'infinite))))
 
-      (when (equal? status 'valid)
-        (for ([ex (in-list exs)])
-          (when (and (flonum? ex) (infinite? ex))
-            (set! status 'infinite))))
+        (hash-update! outcomes rival-status (curry + 1) 0)
 
-      (hash-update! outcomes status (curry + 1) 0)
+        (define is-bad?
+          (for/or ([input (in-list pt)] [repr (in-list (context-var-reprs (car ctxs)))])
+            ((representation-special-value? repr) input)))
 
-      (define is-bad?
-        (for/or ([input (in-list pt)] [repr (in-list (context-var-reprs (car ctxs)))])
-          ((representation-special-value? repr) input)))
-
-      (cond
-       [(and (list? exs) (not is-bad?))
-        (if (>= (+ 1 sampled) (*num-points*))
-            (values (cons pt points) (cons exs exactss))
-            (loop (+ 1 sampled) 0 (cons pt points) (cons exs exactss)))]
-       [else
-        (when (>= skipped (*max-skipped-points*))
-          (raise-herbie-error "Cannot sample enough valid points."
-                              #:url "faq.html#sample-valid-points"))
-        (loop sampled (+ 1 skipped) points exactss)])))
+        (cond
+          [(and (list? rival-exs) (not is-bad?))
+           (if (>= (+ 1 sampled) (*num-points*))
+               (values (cons pt points) (cons rival-exs exactss))
+               (loop (+ 1 sampled) 0 (cons pt points) (cons rival-exs exactss)))]
+          [else
+           (when (>= skipped (*max-skipped-points*))
+             (raise-herbie-error "Cannot sample enough valid points."
+                                 #:url "faq.html#sample-valid-points"))
+           (loop sampled (+ 1 skipped) points exactss)]))))
   (cons outcomes (cons points (flip-lists exactss))))
 
 
@@ -244,10 +243,11 @@
 (define (sample-points pre exprs ctxs)
   (timeline-event! 'analyze)
   (define fn (make-search-func pre exprs ctxs))
+  (define fn-baseline (make-search-func-baseline pre exprs ctxs))
   (match-define (cons sampler table)
     (make-sampler (first ctxs) pre fn))
   (timeline-event! 'sample)
-  (match-define (cons table2 results) (batch-prepare-points fn ctxs sampler))
+  (match-define (cons table2 results) (batch-prepare-points fn ctxs sampler fn-baseline))
   (define total (apply + (hash-values table2)))
   (when (> (hash-ref table2 'infinite 0.0) (* 0.2 total))
    (warn 'inf-points #:url "faq.html#inf-points"

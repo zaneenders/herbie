@@ -64,7 +64,7 @@
 
 (define (mutate! simplified context pcontext iterations)
   (*pcontext* pcontext)
-  (explain! simplified context pcontext)
+  ;(explain! simplified context pcontext)
   (initialize-alt-table! simplified context pcontext)
   (for ([iteration (in-range iterations)] #:break (atab-completed? (^table^)))
     (run-iter!))
