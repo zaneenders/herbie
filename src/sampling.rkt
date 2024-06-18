@@ -180,7 +180,7 @@
 
 ;; Part 3: computing exact values by recomputing at higher precisions
 
-(define (batch-prepare-points fn ctxs sampler fn-baseline)
+(define (batch-prepare-points fn ctxs sampler [fn-baseline #f])
   (rival-profile fn 'executions) ; Clear profiling vector
   ;; If we're using the bf fallback, start at the max precision
   (define outcomes (make-hash))
@@ -200,7 +200,10 @@
         (collect-garbage 'incremental)
         (define-values (rival-status rival-exs rival-time rival-final-iter) (ival-eval fn ctxs pt))
         (collect-garbage 'incremental)
-        (define-values (base-status base-precision base-exs base-time) (ival-eval-baseline fn-baseline ctxs pt))
+        (define-values (base-status base-precision base-exs base-time)
+          (if fn-baseline
+              (ival-eval-baseline fn-baseline ctxs pt)
+              (values #f #f #f #f)))
         (collect-garbage 'incremental)
 
         (when (equal? rival-status 'exit)
