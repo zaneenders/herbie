@@ -127,7 +127,7 @@
 (define *reeval-pts* (make-parameter 8000))
 
 ;; Time out for a given run. 2.5 minutes currently.
-(define *timeout* (make-parameter (* 1000 60 5/2)))
+(define *timeout* (make-parameter (* 1000 60 20)))
 
 ;;; About Herbie:
 
