@@ -245,8 +245,8 @@
 
 (define (sample-points pre exprs ctxs)
   (timeline-event! 'analyze)
-  (define fn (make-search-func pre exprs ctxs))
-  (define fn-baseline (make-search-func-baseline pre exprs ctxs))
+  (define fn (make-search-func (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
+  (define fn-baseline (make-search-func-baseline (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
   (match-define (cons sampler table)
     (make-sampler (first ctxs) pre fn))
   (timeline-event! 'sample)
