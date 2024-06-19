@@ -90,7 +90,7 @@
 (define *max-mpfr-prec* (make-parameter 10000))
 (define *start-prec* (make-parameter 256))
 (define *use-precondition* (make-parameter #f))
-(define *sampling-timeout* (make-parameter 5.0))
+(define *sampling-timeout* (make-parameter 20.0))
 
 ;; The maximum size of an egraph
 (define *node-limit* (make-parameter 8000))
