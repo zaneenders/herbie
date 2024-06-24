@@ -209,7 +209,7 @@
         (define distance-function (discretization-distance
                                    (car (map (compose representation->discretization context-repr) ctxs))))        
 
-        (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-status base-time distance-function)
+        (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-exs base-status base-time distance-function)
 
         (when (equal? rival-status 'exit)
           (warn 'ground-truth #:url "faq.html#ground-truth"
@@ -270,7 +270,7 @@
   (cons (combine-tables table table2) results))
 
 
-(define (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time baseline-status baseline-time distance-function)
+(define (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-exs baseline-status baseline-time distance-function)
   (cond
     ; Rival has produced valid outcomes
     [(equal? rival-status 'valid)
