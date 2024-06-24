@@ -160,8 +160,7 @@
   #;(define prec-threshold (exact-floor (/ (*max-mpfr-prec*) 25)))
   #;(for ([execution (in-vector executions)])
     (define name (symbol->string (execution-name execution)))
-    (define precision (- (execution-precision execution)
-                         (remainder (execution-precision execution) prec-threshold)))
+    (define precision (execution-precision execution))
     (timeline-push!/unsafe 'mixsample (execution-time execution) name precision))
 
   (define time (- (current-inexact-milliseconds) start))
@@ -207,7 +206,10 @@
         (define-values (base-status base-precision base-exs base-time) (ival-eval-baseline fn-baseline ctxs pt))
         (collect-garbage 'incremental)
 
-        (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-status base-time)
+        (define distance-function (discretization-distance
+                                   (car (map (compose representation->discretization context-repr) ctxs))))        
+
+        (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-status base-time distance-function)
 
         (when (equal? rival-status 'exit)
           (warn 'ground-truth #:url "faq.html#ground-truth"
@@ -268,7 +270,7 @@
   (cons (combine-tables table table2) results))
 
 
-(define (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time baseline-status baseline-time)
+(define (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time baseline-status baseline-time distance-function)
   (cond
     ; Rival has produced valid outcomes
     [(equal? rival-status 'valid)
@@ -277,7 +279,7 @@
      (match-define (list internal-point-time external-point-time sollya-point sollya-point-status) (fn-sollya pt #f))
          
      (define match (if (and (equal? sollya-point-status 'valid)
-                            (<= 2 (flonums-between (last rival-exs) sollya-point)))
+                            (<= 2 (distance-function (last rival-exs) sollya-point)))
                        #t
                        #f))
 
@@ -286,7 +288,7 @@
        (sleep 0.1)
        (match-define (list internal-point-time* external-point-time* sollya-point* sollya-point-status*) (fn-sollya pt #f))
        (set! match (if (and (equal? sollya-point-status* 'valid)
-                            (<= 2 (flonums-between (last rival-exs) sollya-point*)))
+                            (<= 2 (distance-function (last rival-exs) sollya-point*)))
                        #t
                        #f))
        (set! sollya-point sollya-point*)
