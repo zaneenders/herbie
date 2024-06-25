@@ -38,7 +38,7 @@
      (asinh . "asinh(~a)")
      (acosh . "acosh(~a)")
      (atanh . "atanh(~a)")
-     (atan2 . "atan(~a/~a)")
+     ;(atan2 . "atan(~a/~a)")
      (erf . "erf(~a)")
      (erfc . "erfc(~a)")
      ;(tgamma . Gamma)
