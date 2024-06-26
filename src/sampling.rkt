@@ -154,17 +154,18 @@
     (warn 'ground-truth "Could not converge on a ground truth"
           #:extra (for/list ([var (in-list (context-vars (car ctxs)))] [val (in-list pt)])
                     (format "~a = ~a" var val))))
-  #;(define executions (rival-profile machine 'executions))
+  (define executions (rival-profile machine 'executions))
   #;(when (>= (vector-length executions) (*rival-profile-executions*))
     (warn 'profile "Rival profile vector overflowed, profile may not be complete"))
   #;(define prec-threshold (exact-floor (/ (*max-mpfr-prec*) 25)))
-  #;(for ([execution (in-vector executions)])
+  (for ([execution (in-vector executions)])
     (define name (symbol->string (execution-name execution)))
     (define precision (execution-precision execution))
-    (timeline-push!/unsafe 'mixsample (execution-time execution) name precision))
+    (timeline-push!/unsafe 'mixsample-rival (execution-time execution) name precision))
 
   (define time (- (current-inexact-milliseconds) start))
   (define final-iter (rival-profile machine 'iterations))
+    
   #;(timeline-push!/unsafe 'outcomes time
                          (rival-profile machine 'iterations) (~a status) 1)
   (values status value time final-iter))
@@ -199,12 +200,9 @@
                    [*start-prec* (+ 20 output-prec)])            ; same as sollya's first pass
       (let loop ([sampled 0] [skipped 0] [points '()] [exactss '()])
         (define pt (sampler))
-      
-        (collect-garbage 'incremental)
+        
         (define-values (rival-status rival-exs rival-time rival-final-iter) (ival-eval fn ctxs pt))
-        (collect-garbage 'incremental)
         (define-values (base-status base-precision base-exs base-time) (ival-eval-baseline fn-baseline ctxs pt))
-        (collect-garbage 'incremental)
 
         (define distance-function (discretization-distance
                                    (car (map (compose representation->discretization context-repr) ctxs))))        

@@ -87,7 +87,7 @@
 (define *max-bsearch-bits* (make-parameter 48))
 
 ;; Maximum MPFR precision allowed during exact evaluation
-(define *max-mpfr-prec* (make-parameter 10000))
+(define *max-mpfr-prec* (make-parameter (* 63 512))) ; this is what sollya has as a max bound
 (define *start-prec* (make-parameter 256))
 (define *use-precondition* (make-parameter #f))
 (define *sampling-timeout* (make-parameter 20.0))
