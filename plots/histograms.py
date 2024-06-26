@@ -1,9 +1,9 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.ticker import MultipleLocator, ScalarFormatter
 import pandas as pd
 import json
 import argparse
+
 
 def plot_histograms(args):
     baseline_json = json.load(open(args.baseline))
@@ -21,6 +21,7 @@ def plot_histograms(args):
     fig.legend(handles, labels)
     plt.tight_layout()
     plt.show()
+
 
 def bucket_precisions_by_bins(data, bins):
     total_time = data["time"].sum()
@@ -42,6 +43,8 @@ def plot_histogram_for_operation(op_name="ival-sin", ax=None, rival=None, baseli
 
     ax.bar(np.arange(len(bins)) + 0.4, buckets_base, color="green", alpha=1, width=0.6, label='baseline')
     ax.bar(np.arange(len(bins)) + 0.6, buckets_rival, color="red", alpha=0.7, width=0.6, label='rival')
+    ax.yaxis.grid(True, linestyle='-', which='major', color='grey', alpha=0.3)
+
 
     ax.set_xticks(np.arange(len(bins)), bins)
     ax.set_xticklabels([str(x) if x % 1000 == 0 else "" for x in bins])
