@@ -245,12 +245,10 @@
       ([(k v) (in-hash t2)])
     (hash-set t1 k (+ (hash-ref t1 k 0) (* (/ v t2-total) t1-base)))))
 
-(define (sample-points pre exprs ctxs)
-  (parameterize ([*rival-use-shorthands* #f])
-    
-    (timeline-event! 'analyze)
+(define (sample-points pre exprs ctxs)(timeline-event! 'analyze)
   
-    (define fn (make-search-func (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
+    (define fn (parameterize ([*rival-use-shorthands* #f])
+                 (make-search-func (if (*use-precondition*) pre '(TRUE)) exprs ctxs)))
     (define fn-baseline (make-search-func-baseline (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
     (match-define-values (fn-sollya kill-sollya-process) (run-sollya (list exprs ctxs)))
   
@@ -266,7 +264,7 @@
       (warn 'inf-points #:url "faq.html#inf-points"
             "~a of points produce a very large (infinite) output. You may want to add a precondition." 
             (format-accuracy (- total (hash-ref table2 'infinite)) total #:unit "%")))
-    (cons (combine-tables table table2) results)))
+    (cons (combine-tables table table2) results))
 
 
 (define (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-exs baseline-status baseline-time distance-function)
