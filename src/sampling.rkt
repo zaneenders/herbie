@@ -196,8 +196,7 @@
   (define-values (points exactss)
     (parameterize ([*max-mpfr-prec* (* (+ 10 output-prec) 512)]  ; same as sollya's max precision
                    [*rival-max-precision* (* (+ 10 output-prec) 512)]
-                   [*start-prec* (+ 20 output-prec)]
-                   [*rival-use-shorthands* #f])                  ; same as sollya's first pass
+                   [*start-prec* (+ 20 output-prec)])                  ; same as sollya's first pass
       (let loop ([sampled 0] [skipped 0] [points '()] [exactss '()])
         (define pt (sampler))
         
@@ -247,25 +246,27 @@
     (hash-set t1 k (+ (hash-ref t1 k 0) (* (/ v t2-total) t1-base)))))
 
 (define (sample-points pre exprs ctxs)
-  (timeline-event! 'analyze)
+  (parameterize ([*rival-use-shorthands* #f])
+    
+    (timeline-event! 'analyze)
   
-  (define fn (make-search-func (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
-  (define fn-baseline (make-search-func-baseline (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
-  (match-define-values (fn-sollya kill-sollya-process) (run-sollya (list exprs ctxs)))
+    (define fn (make-search-func (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
+    (define fn-baseline (make-search-func-baseline (if (*use-precondition*) pre '(TRUE)) exprs ctxs))
+    (match-define-values (fn-sollya kill-sollya-process) (run-sollya (list exprs ctxs)))
   
-  (match-define (cons sampler table)
-    (make-sampler (first ctxs) pre fn))
-  (timeline-event! 'sample)
+    (match-define (cons sampler table)
+      (make-sampler (first ctxs) pre fn))
+    (timeline-event! 'sample)
   
-  (match-define (cons table2 results) (batch-prepare-points fn ctxs sampler fn-baseline fn-sollya))
-  (kill-sollya-process)
+    (match-define (cons table2 results) (batch-prepare-points fn ctxs sampler fn-baseline fn-sollya))
+    (kill-sollya-process)
   
-  (define total (apply + (hash-values table2)))
-  (when (> (hash-ref table2 'infinite 0.0) (* 0.2 total))
-   (warn 'inf-points #:url "faq.html#inf-points"
-    "~a of points produce a very large (infinite) output. You may want to add a precondition." 
-    (format-accuracy (- total (hash-ref table2 'infinite)) total #:unit "%")))
-  (cons (combine-tables table table2) results))
+    (define total (apply + (hash-values table2)))
+    (when (> (hash-ref table2 'infinite 0.0) (* 0.2 total))
+      (warn 'inf-points #:url "faq.html#inf-points"
+            "~a of points produce a very large (infinite) output. You may want to add a precondition." 
+            (format-accuracy (- total (hash-ref table2 'infinite)) total #:unit "%")))
+    (cons (combine-tables table table2) results)))
 
 
 (define (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-exs baseline-status baseline-time distance-function)
