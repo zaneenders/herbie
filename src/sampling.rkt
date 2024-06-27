@@ -199,12 +199,9 @@
                    [*start-prec* (+ 20 output-prec)])            ; same as sollya's first pass
       (let loop ([sampled 0] [skipped 0] [points '()] [exactss '()])
         (define pt (sampler))
-      
-        (collect-garbage 'incremental)
+        
         (define-values (rival-status rival-exs rival-time rival-final-iter) (ival-eval fn ctxs pt))
-        (collect-garbage 'incremental)
         (define-values (base-status base-precision base-exs base-time) (ival-eval-baseline fn-baseline ctxs pt))
-        (collect-garbage 'incremental)
 
         (define distance-function (discretization-distance
                                    (car (map (compose representation->discretization context-repr) ctxs))))        
