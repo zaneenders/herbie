@@ -154,6 +154,7 @@
     (warn 'ground-truth "Could not converge on a ground truth"
           #:extra (for/list ([var (in-list (context-vars (car ctxs)))] [val (in-list pt)])
                     (format "~a = ~a" var val))))
+  (define time (- (current-inexact-milliseconds) start))
   (define executions (rival-profile machine 'executions))
   #;(when (>= (vector-length executions) (*rival-profile-executions*))
     (warn 'profile "Rival profile vector overflowed, profile may not be complete"))
@@ -162,8 +163,7 @@
     (define name (symbol->string (execution-name execution)))
     (define precision (execution-precision execution))
     (timeline-push!/unsafe 'mixsample-rival (execution-time execution) name precision))
-
-  (define time (- (current-inexact-milliseconds) start))
+  
   (define final-iter (rival-profile machine 'iterations))
     
   #;(timeline-push!/unsafe 'outcomes time
