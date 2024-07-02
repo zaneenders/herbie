@@ -197,7 +197,7 @@
   (define-values (points exactss)
     (parameterize ([*max-mpfr-prec* (* (+ 10 output-prec) 512)]  ; same as sollya's max precision
                    [*rival-max-precision* (* (+ 10 output-prec) 512)]
-                   [*start-prec* (+ 20 output-prec)])                  ; same as sollya's first pass
+                   [*start-prec* 73])
       (let loop ([sampled 0] [skipped 0] [points '()] [exactss '()])
         (define pt (sampler))
         
