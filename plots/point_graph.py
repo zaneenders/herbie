@@ -11,29 +11,39 @@ def plot_points_graph(outcomes, title, ax):
 
     category_labels = ['Rival', 'Sollya', 'Baseline']
 
-
     data = np.zeros((len(series_labels), len(category_labels)))
 
     # Zeros difference
+    # Rival
     data[0][0] = outcomes.loc[outcomes['tool_name'] == 'valid-rival+baseline-zero']['number_of_points'].sum()
+    data[0][0] += outcomes.loc[outcomes['tool_name'] == 'valid-rival+sollya-zero']['number_of_points'].sum()
     data[0][0] += outcomes.loc[outcomes['tool_name'] == 'valid-rival-only-zero']['number_of_points'].sum()
 
+    # Sollya
     data[0][1] = outcomes.loc[outcomes['tool_name'] == 'valid-rival+sollya-zero']['number_of_points'].sum()
+    data[0][1] += outcomes.loc[outcomes['tool_name'] == 'valid-sollya+baseline-zero']['number_of_points'].sum()
     data[0][1] += outcomes.loc[outcomes['tool_name'] == 'valid-sollya-only-zero']['number_of_points'].sum()
 
+    # Baseline
     data[0][2] = outcomes.loc[outcomes['tool_name'] == 'valid-rival+baseline-zero']['number_of_points'].sum()
+    data[0][2] += outcomes.loc[outcomes['tool_name'] == 'valid-sollya+baseline-zero']['number_of_points'].sum()
     data[0][2] += outcomes.loc[outcomes['tool_name'] == 'valid-baseline-only-zero']['number_of_points'].sum()
 
     # Real number difference
+    # Rival
     data[1][0] = outcomes.loc[outcomes['tool_name'] == 'valid-rival+baseline-real']['number_of_points'].sum()
+    data[1][0] += outcomes.loc[outcomes['tool_name'] == 'valid-rival+sollya-real']['number_of_points'].sum()
     data[1][0] += outcomes.loc[outcomes['tool_name'] == 'valid-rival-only-real']['number_of_points'].sum()
 
+    # Sollya
     data[1][1] = outcomes.loc[outcomes['tool_name'] == 'valid-rival+sollya-real']['number_of_points'].sum()
+    data[1][1] += outcomes.loc[outcomes['tool_name'] == 'valid-sollya+baseline-real']['number_of_points'].sum()
     data[1][1] += outcomes.loc[outcomes['tool_name'] == 'valid-sollya-only-real']['number_of_points'].sum()
 
+    # Baseline
     data[1][2] = outcomes.loc[outcomes['tool_name'] == 'valid-rival+baseline-real']['number_of_points'].sum()
+    data[1][2] += outcomes.loc[outcomes['tool_name'] == 'valid-sollya+baseline-real']['number_of_points'].sum()
     data[1][2] += outcomes.loc[outcomes['tool_name'] == 'valid-baseline-only-real']['number_of_points'].sum()
-
 
     # Plotting top part of the bar
     bottom = np.zeros(len(category_labels))
@@ -70,8 +80,9 @@ def load_outcomes(url):
     outcomes = pd.DataFrame(outcomes, columns=['time', 'rival_iter', 'tool_name', 'number_of_points'])
     return outcomes
 
+
 parser = argparse.ArgumentParser(prog='histograms.py', description='Script outputs mixed precision histograms for a Herbie run')
-parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1719834219:nightly:artem-popl-eval:db6536e941/timeline.json")
+parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1719948723:nightly:artem-popl-eval:db6536e941/timeline.json")
 args = parser.parse_args()
 
 outcomes = load_outcomes(args.timeline)
