@@ -100,7 +100,7 @@
              (round-sollya (string-replace (symbol->string expr) "D" "Dvar"))
              (round-sollya (var-parse expr))))]
     [(? number?)  ; constant is evaluated at arbitary precision, same as in Rival
-     expr]))
+     (format "(~a)" expr)]))
 
 (define (prog->sollya exprs ctxs)
   (define precision (match (representation-name (context-repr (car ctxs)))
