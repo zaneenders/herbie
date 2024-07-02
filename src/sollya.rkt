@@ -95,10 +95,12 @@
      (apply (curry format sollya-format) args)]
     [(? symbol?)
      (if (equal? expr 'f)
-         (error "f can not be a variable")
-         (round-sollya (var-parse expr)))]  ; avoid symbols '.' '-' in variables
+         (round-sollya (string-replace (symbol->string expr) "f" "fvar"))
+         (if (equal? expr 'D)
+             (round-sollya (string-replace (symbol->string expr) "D" "Dvar"))
+             (round-sollya (var-parse expr))))]
     [(? number?)  ; constant is evaluated at arbitary precision, same as in Rival
-     expr]))
+     (format "(~a)" expr)]))
 
 (define (prog->sollya exprs ctxs)
   (define precision (match (representation-name (context-repr (car ctxs)))
@@ -113,11 +115,15 @@
             (expr->sollya exprs))))
 
 (define (var-parse x)
-   (string-replace
-    (string-replace 
-     (string-replace (symbol->string x) "-" "")
-     "." "")
-    "*" "_"))
+  (if (equal? x 'f)
+      (string-replace (symbol->string x) "f" "fvar")
+      (if (equal? x 'D)
+          (string-replace (symbol->string x) "D" "Dvar")
+          (string-replace
+           (string-replace 
+            (string-replace (symbol->string x) "-" "")
+            "." "")
+           "*" "_"))))
 
 (define sollya-path (find-executable-path "sollya"))
 #;(define sollya-path (find-executable-path "/home/artemya/RA/sollya-8.0/sollya"))
