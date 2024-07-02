@@ -48,7 +48,7 @@ def plot_points_graph(outcomes, title, ax):
                 weight='bold')
 
     for bar in ax.patches:
-        if bar.get_height() > 200:
+        if bar.get_height() > 300:
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + bar.get_y() - bar.get_height()/2 - 200,
@@ -71,7 +71,7 @@ def load_outcomes(url):
     return outcomes
 
 parser = argparse.ArgumentParser(prog='histograms.py', description='Script outputs mixed precision histograms for a Herbie run')
-parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1719402193:nightly:artem-popl-eval:2cccdc887a/timeline.json")
+parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1719834219:nightly:artem-popl-eval:db6536e941/timeline.json")
 args = parser.parse_args()
 
 outcomes = load_outcomes(args.timeline)
