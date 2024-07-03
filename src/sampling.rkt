@@ -297,11 +297,11 @@
        [(and (equal? 'valid sollya-point-status) (equal? 'valid baseline-status) (equal? rival-status 'valid)
              (< external-point-time (*sampling-timeout*)) (< baseline-time (*sampling-timeout*)) (< rival-time (*sampling-timeout*)))
         (timeline-push!/unsafe 'outcomes external-point-time
-                               baseline-precision (format "~a-sollya" sollya-point-status) 1)
+                               rival-final-iter (format "~a-sollya" sollya-point-status) 1)
         (timeline-push!/unsafe 'outcomes baseline-time
-                               baseline-precision (format "~a-baseline" baseline-status) 1)
+                               rival-final-iter (format "~a-baseline" baseline-status) 1)
         (timeline-push!/unsafe 'outcomes rival-time
-                               baseline-precision (format "~a-rival" rival-status) 1)]
+                               rival-final-iter (format "~a-rival" rival-status) 1)]
 
        ; Baseline and Rival have succeeded
        [(and (equal? 'valid baseline-status) (equal? rival-status 'valid)
@@ -309,13 +309,13 @@
         (cond
           [(equal? (last rival-exs) (fl 0.0))
            (timeline-push!/unsafe 'outcomes rival-time
-                                   baseline-precision (format "~a-rival+baseline-zero" rival-status) 1)]
+                                   rival-final-iter (format "~a-rival+baseline-zero" rival-status) 1)]
           [(flinfinite? (last rival-exs))
            (timeline-push!/unsafe 'outcomes rival-time
-                                       baseline-precision (format "~a-rival+baseline-inf" rival-status) 1)]
+                                       rival-final-iter (format "~a-rival+baseline-inf" rival-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes rival-time
-                                       baseline-precision (format "~a-rival+baseline-real" rival-status) 1)])]
+                                       rival-final-iter (format "~a-rival+baseline-real" rival-status) 1)])]
 
        ; Baseline and Sollya have succeeded
        [(and (equal? 'valid sollya-point-status) (equal? 'valid baseline-status)
@@ -323,13 +323,13 @@
         (cond
           [(equal? (last base-exs) (fl 0.0))
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya+baseline-zero" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya+baseline-zero" sollya-point-status) 1)]
           [(flinfinite? (last base-exs))
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
+                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
 
        ; Sollya and Rival have succeeded
        [(and (equal? 'valid sollya-point-status) (equal? rival-status 'valid)
@@ -337,13 +337,13 @@
         (cond
           [(equal? (last rival-exs) (fl 0.0))
            (timeline-push!/unsafe 'outcomes rival-time
-                               baseline-precision (format "~a-rival+sollya-zero" rival-status) 1)]
+                               rival-final-iter (format "~a-rival+sollya-zero" rival-status) 1)]
           [(flinfinite? (last rival-exs))
            (timeline-push!/unsafe 'outcomes rival-time
-                               baseline-precision (format "~a-rival+sollya-inf" rival-status) 1)]
+                               rival-final-iter (format "~a-rival+sollya-inf" rival-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes rival-time
-                               baseline-precision (format "~a-rival+sollya-real" rival-status) 1)])]
+                               rival-final-iter (format "~a-rival+sollya-real" rival-status) 1)])]
 
        ; Only Rival has succeeded
        [(and (equal? rival-status 'valid)
@@ -351,39 +351,39 @@
         (cond
           [(equal? (last rival-exs) (fl 0.0))
            (timeline-push!/unsafe 'outcomes rival-time
-                                  baseline-precision (format "~a-rival-only-zero" rival-status) 1)]
+                                  rival-final-iter (format "~a-rival-only-zero" rival-status) 1)]
           [(flinfinite? (last rival-exs))
            (timeline-push!/unsafe 'outcomes rival-time
-                               baseline-precision (format "~a-rival-only-inf" rival-status) 1)]
+                               rival-final-iter (format "~a-rival-only-inf" rival-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes rival-time
-                               baseline-precision (format "~a-rival-only-real" rival-status) 1)])]
+                               rival-final-iter (format "~a-rival-only-real" rival-status) 1)])]
        
        ; Only Sollya has succeeded
        [(and (equal? 'valid sollya-point-status) (< external-point-time (*sampling-timeout*)))
         (cond
           [(equal? sollya-point (fl 0.0))
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya-only-zero" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya-only-zero" sollya-point-status) 1)]
           [(flinfinite? sollya-point)
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya-only-inf" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya-only-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya-only-real" sollya-point-status) 1)])]
+                                  rival-final-iter (format "~a-sollya-only-real" sollya-point-status) 1)])]
 
        ; Only Baseline has succeeded
        [(and (equal? 'valid baseline-status) (< baseline-time (*sampling-timeout*)))
         (cond
           [(equal? (last base-exs) (fl 0.0))
            (timeline-push!/unsafe 'outcomes baseline-time
-                                  baseline-precision (format "~a-baseline-only-zero" baseline-status) 1)]
+                                  rival-final-iter (format "~a-baseline-only-zero" baseline-status) 1)]
           [(flinfinite? (last base-exs))
            (timeline-push!/unsafe 'outcomes baseline-time
-                                  baseline-precision (format "~a-baseline-only-inf" baseline-status) 1)]
+                                  rival-final-iter (format "~a-baseline-only-inf" baseline-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes baseline-time
-                                  baseline-precision (format "~a-baseline-only-real" baseline-status) 1)])])
+                                  rival-final-iter (format "~a-baseline-only-real" baseline-status) 1)])])
      
      (when match
        (warn 'ground-truth (format "Sollya didn't converge on: pt=~a, sollya-point=~a, rival-point=~a\n" pt sollya-point (last rival-exs))))]
@@ -401,36 +401,36 @@
         (cond
           [(equal? (last base-exs) (fl 0.0))
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya+baseline-zero" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya+baseline-zero" sollya-point-status) 1)]
           [(flinfinite? (last base-exs))
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
+                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
 
        ; Only Sollya has succeeded
        [(and (equal? 'valid sollya-point-status) (< external-point-time (*sampling-timeout*)))
         (cond
           [(equal? sollya-point (fl 0.0))
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya-only-zero" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya-only-zero" sollya-point-status) 1)]
           [(flinfinite? sollya-point)
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya-only-inf" sollya-point-status) 1)]
+                                  rival-final-iter (format "~a-sollya-only-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  baseline-precision (format "~a-sollya-only-real" sollya-point-status) 1)])]
+                                  rival-final-iter (format "~a-sollya-only-real" sollya-point-status) 1)])]
 
        ; Only Baseline has succeeded
        [(and (equal? 'valid baseline-status) (< baseline-time (*sampling-timeout*)))
         (cond
           [(equal? (last base-exs) (fl 0.0))
            (timeline-push!/unsafe 'outcomes baseline-time
-                                  baseline-precision (format "~a-baseline-only-zero" baseline-status) 1)]
+                                  rival-final-iter (format "~a-baseline-only-zero" baseline-status) 1)]
           [(flinfinite? (last base-exs))
            (timeline-push!/unsafe 'outcomes baseline-time
-                                  baseline-precision (format "~a-baseline-only-inf" baseline-status) 1)]
+                                  rival-final-iter (format "~a-baseline-only-inf" baseline-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes baseline-time
-                                  baseline-precision (format "~a-baseline-only-real" baseline-status) 1)])])]))
+                                  rival-final-iter (format "~a-baseline-only-real" baseline-status) 1)])])]))
