@@ -61,10 +61,6 @@
 
 ; This used to cause crashes
 
-(FPCore (w l)
- :name "exp-w (used to crash)"
- (* (exp (- w)) (pow l (exp w))))
-
 (FPCore (x)
  :name "expfmod (used to be hard to sample)"
  (* (fmod (exp x) (sqrt (cos x))) (exp (- x))))
