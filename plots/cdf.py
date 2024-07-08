@@ -30,6 +30,6 @@ def plot_cdf(args):
 
 
 parser = argparse.ArgumentParser(prog='histograms.py', description='Script outputs mixed precision histograms for a Herbie run')
-parser.add_argument('-t', '--timeline-url', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1719841805:nightly:artem-popl-eval-histograms:d87a728e42/timeline.json")
+parser.add_argument('-t', '--timeline-url', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720270631:nightly:artem-popl-eval-histograms:6f0787f921/timeline.json")
 args = parser.parse_args()
 plot_cdf(args)

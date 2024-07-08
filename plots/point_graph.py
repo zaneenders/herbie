@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def plot_points_graph(outcomes, title, ax):
-    series_labels = ['zero', 'real number']
+    series_labels = ['zero', 'non-zero']
     colors = ['tab:blue',  'tab:orange', 'tab:green']
 
     category_labels = ['Rival', 'Sollya', 'Baseline']
@@ -51,11 +51,9 @@ def plot_points_graph(outcomes, title, ax):
         ax.bar(np.arange(len(category_labels)), weight, label=label, bottom=bottom, color=color)
         bottom += weight
 
-    y_offset = 100
-    print(bottom)
+    y_offset = 80
     for i, total in enumerate(bottom):
-        ax.text(bottom[i], total + y_offset, total, ha='center',
-                weight='bold')
+        ax.text(i, total + y_offset, str(int(total)), ha='center', color='black')
 
     for bar in ax.patches:
         if bar.get_height() > 300:
@@ -68,10 +66,12 @@ def plot_points_graph(outcomes, title, ax):
         )
 
     ax.set_xticks(np.arange(len(category_labels)), category_labels)
-    ax.legend()
+    ax.legend(loc='upper center')
     ax.yaxis.grid(True, linestyle='-', which='major', color='grey', alpha=0.3)
     ax.set_xlabel("Tool")
     ax.set_ylabel("Number of points")
+    ax.margins(y=0.1)
+    fig.tight_layout(pad=1.0)
 
 
 def load_outcomes(url):
@@ -82,11 +82,11 @@ def load_outcomes(url):
 
 
 parser = argparse.ArgumentParser(prog='histograms.py', description='Script outputs mixed precision histograms for a Herbie run')
-parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1719948723:nightly:artem-popl-eval:db6536e941/timeline.json")
+parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720264465:nightly:artem-popl-eval:a2e296cbbd/timeline.json")
 args = parser.parse_args()
 
 outcomes = load_outcomes(args.timeline)
-fig, ax = plt.subplots(figsize=(5, 4.3))
-fig.tight_layout(pad=5.0)
+fig, ax = plt.subplots(figsize=(4, 3.5))
+fig.tight_layout(pad=2.0)
 plot_points_graph(outcomes, "20 ms timeout", ax)
 plt.savefig("point_graph.pdf", format="pdf")
