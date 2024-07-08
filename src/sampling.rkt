@@ -159,10 +159,11 @@
   #;(when (>= (vector-length executions) (*rival-profile-executions*))
     (warn 'profile "Rival profile vector overflowed, profile may not be complete"))
   #;(define prec-threshold (exact-floor (/ (*max-mpfr-prec*) 25)))
-  (for ([execution (in-vector executions)])
-    (define name (symbol->string (execution-name execution)))
-    (define precision (execution-precision execution))
-    (timeline-push!/unsafe 'mixsample-rival (execution-time execution) name precision))
+  (when (equal? status 'valid)
+    (for ([execution (in-vector executions)])
+      (define name (symbol->string (execution-name execution)))
+      (define precision (execution-precision execution))
+      (timeline-push!/unsafe 'mixsample-rival (execution-time execution) name precision)))
   
   (define final-iter (rival-profile machine 'iterations))
     
@@ -202,12 +203,13 @@
         (define pt (sampler))
         
         (define-values (rival-status rival-exs rival-time rival-final-iter) (ival-eval fn ctxs pt))
-        (define-values (base-status base-precision base-exs base-time) (ival-eval-baseline fn-baseline ctxs pt))
+        (when (equal? rival-status 'valid)
+          (ival-eval-baseline fn-baseline ctxs pt))
 
         (define distance-function (discretization-distance
                                    (car (map (compose representation->discretization context-repr) ctxs))))        
 
-        (sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-exs base-status base-precision base-time distance-function)
+        #;(sollya-eval fn-sollya pt rival-status rival-final-iter rival-exs rival-time base-exs base-status base-precision base-time distance-function)
 
         (when (equal? rival-status 'exit)
           (warn 'ground-truth #:url "faq.html#ground-truth"
