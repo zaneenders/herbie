@@ -159,7 +159,12 @@
   #;(when (>= (vector-length executions) (*rival-profile-executions*))
     (warn 'profile "Rival profile vector overflowed, profile may not be complete"))
   #;(define prec-threshold (exact-floor (/ (*max-mpfr-prec*) 25)))
-  (when (equal? status 'valid)
+
+  (for ([execution (in-vector executions)])
+    (define name (symbol->string (execution-name execution)))
+    (define precision (execution-precision execution))
+    (timeline-push!/unsafe 'mixsample-rival (execution-time execution) name precision))
+  #;(when (equal? status 'valid)
     (for ([execution (in-vector executions)])
       (define name (symbol->string (execution-name execution)))
       (define precision (execution-precision execution))
@@ -203,7 +208,8 @@
         (define pt (sampler))
         
         (define-values (rival-status rival-exs rival-time rival-final-iter) (ival-eval fn ctxs pt))
-        (when (equal? rival-status 'valid)
+        (ival-eval-baseline fn-baseline ctxs pt)
+        #;(when (equal? rival-status 'valid)
           (ival-eval-baseline fn-baseline ctxs pt))
 
         (define distance-function (discretization-distance
