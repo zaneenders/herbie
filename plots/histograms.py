@@ -16,26 +16,29 @@ def plot_histogram(args):
     baseline = load_mixsample(args.timeline, "base")
     rival = load_mixsample(args.timeline, "rival")
 
+    adjust_time = round(rival[rival["op"] == 'adjust']['time'].sum()/1000, 2)
     rival = rival[rival["op"] != 'adjust']
+
+    print("\\newcommand{\TuningTime}{" + str(adjust_time) + "\\xspace}")
+    print("\\newcommand{\TuningTimePercentage}{" + str(round(adjust_time/rival['time'].sum()*100, 4)) + "\\xspace}")
 
     fig, ax = plt.subplots(figsize=(6.5, 2.5))
 
-    # bins = np.concatenate([np.arange(0, 1000, 73), np.arange(1000, 19001, 1000)])
-    bins = 2 ** np.arange(6, 16, 1)
+    bins = 2 ** np.arange(6, 17, 1)
 
     buckets_base = bucket_precisions_by_bins(baseline, bins)
     buckets_rival = bucket_precisions_by_bins(rival, bins)
 
     ax.bar(np.arange(len(bins)) + 0.4, buckets_base, color="green", alpha=1, width=0.6, label='baseline', hatch='/')
     ax.bar(np.arange(len(bins)) + 0.6, buckets_rival, color="red", alpha=0.7, width=0.6, label='rival')
+
+    temp = np.zeros_like(buckets_rival)
+    temp[-1] = adjust_time
+    ax.bar(np.arange(len(bins)), temp, color="red", alpha=0.7, width=0.6)
     ax.yaxis.grid(True, linestyle='-', which='major', color='grey', alpha=0.3)
 
     ax.set_xticks(np.arange(len(bins)), bins)
-    ax.set_xticklabels(["$2^{" + str(i+6) + "}$" for i, x in enumerate(bins)])
-    # sec = ax.secondary_xaxis(location=0)
-    # sec.set_xticks([7, 18], labels=['\nStep = 73', '\nStep = 2000'])
-
-    # ax.vlines(x=14, ymin=0, ymax=max(buckets_base.max(), buckets_rival.max()), colors='black', ls='--', lw=1)
+    ax.set_xticklabels(["$2^{" + str(i+6) + "}$" if i != 10 else "tuning\noverheads" for i, x in enumerate(bins)])
 
     ax.margins(x=0.02)
     ax.set_ylabel("Seconds spent")
@@ -55,6 +58,6 @@ def bucket_precisions_by_bins(data, bins):
     return np.array(x)
 
 parser = argparse.ArgumentParser(prog='histograms.py', description='Script outputs mixed precision histograms for a Herbie run')
-parser.add_argument('-t', '--timeline-url', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720270631:nightly:artem-popl-eval-histograms:6f0787f921/timeline.json")
+parser.add_argument('-t', '--timeline-url', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720478924:nightly:artem-popl-eval-histograms:e2004ab7a9/timeline.json")
 args = parser.parse_args()
 plot_histogram(args)

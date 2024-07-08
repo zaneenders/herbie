@@ -45,6 +45,12 @@ def plot_points_graph(outcomes, title, ax):
     data[1][2] += outcomes.loc[outcomes['tool_name'] == 'valid-sollya+baseline-real']['number_of_points'].sum()
     data[1][2] += outcomes.loc[outcomes['tool_name'] == 'valid-baseline-only-real']['number_of_points'].sum()
 
+    infinite_difference = outcomes.loc[outcomes['tool_name'] == 'valid-rival+baseline-inf']['number_of_points'].sum()
+    infinite_difference += outcomes.loc[outcomes['tool_name'] == 'valid-rival+sollya-inf']['number_of_points'].sum()
+    infinite_difference += outcomes.loc[outcomes['tool_name'] == 'valid-rival-only-inf']['number_of_points'].sum()
+
+    print("\\newcommand{\SamplingInfiniteDifference}{" + str(infinite_difference) + "\\xspace}")
+
     # Plotting top part of the bar
     bottom = np.zeros(len(category_labels))
     for label, weight, color in zip(series_labels, data, colors):
@@ -62,8 +68,7 @@ def plot_points_graph(outcomes, title, ax):
                 bar.get_height() + bar.get_y() - bar.get_height()/2 - 200,
                 int(bar.get_height()),
                 ha='center',
-                color='black'
-        )
+                color='black')
 
     ax.set_xticks(np.arange(len(category_labels)), category_labels)
     ax.legend(loc='upper center')

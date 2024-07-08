@@ -29,6 +29,10 @@ def plot_speed_graph(outcomes, ax):
     print("\\newcommand{\RivalAvgSpeedupOverBaseline}{" + str(
         round(tool_cmp2speed(rival_cmp)[1][:5].sum() / np.array(tool_cmp2speed(baseline_cmp)[1][:5]).sum(), 2)) + "\\xspace}")
 
+    print("\\newcommand{\RivalMaxSpeedupOverSollya}{" + str(round(np.array(tool_cmp2speed(rival_cmp)[1])[4]/np.array(tool_cmp2speed(sollya_cmp)[1])[4], 2)) + "\\xspace}")
+    print("\\newcommand{\RivalMaxSpeedupOverBaseline}{" + str(round(np.array(tool_cmp2speed(rival_cmp)[1])[4]/np.array(tool_cmp2speed(baseline_cmp)[1])[4], 2)) + "\\xspace}")
+
+
 
     ax.legend()
     ax.set_xlabel("Difficulty")
