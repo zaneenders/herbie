@@ -196,7 +196,7 @@
   (define-values (points exactss)
     (parameterize ([*max-mpfr-prec* (* (+ 10 output-prec) 512)]  ; same as sollya's max precision
                    [*rival-max-precision* (* (+ 10 output-prec) 512)]
-                   [*start-prec* (+ 20 output-prec)])                  ; same as sollya's first pass
+                   [*start-prec* (+ 10 output-prec)])                  ; same as sollya's first pass
       (let loop ([sampled 0] [skipped 0] [points '()] [exactss '()])
         (define pt (sampler))
         
@@ -301,7 +301,10 @@
         (timeline-push!/unsafe 'outcomes baseline-time
                                rival-final-iter (format "~a-baseline" baseline-status) 1)
         (timeline-push!/unsafe 'outcomes rival-time
-                               rival-final-iter (format "~a-rival" rival-status) 1)]
+                               rival-final-iter (format "~a-rival" rival-status) 1)
+        (if (fl= (last rival-exs) sollya-point)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-correct-roduning" 1)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-faithful-roduning" 1))]
 
        ; Baseline and Rival have succeeded
        [(and (equal? 'valid baseline-status) (equal? rival-status 'valid)
@@ -329,7 +332,10 @@
                                   rival-final-iter (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
+                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])
+        (if (fl= (last base-exs) sollya-point)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-correct-roduning" 1)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-faithful-roduning" 1))]
 
        ; Sollya and Rival have succeeded
        [(and (equal? 'valid sollya-point-status) (equal? rival-status 'valid)
@@ -343,7 +349,10 @@
                                rival-final-iter (format "~a-rival+sollya-inf" rival-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes rival-time
-                               rival-final-iter (format "~a-rival+sollya-real" rival-status) 1)])]
+                               rival-final-iter (format "~a-rival+sollya-real" rival-status) 1)])
+        (if (fl= (last rival-exs) sollya-point)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-correct-roduning" 1)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-faithful-roduning" 1))]
 
        ; Only Rival has succeeded
        [(and (equal? rival-status 'valid)
@@ -407,7 +416,10 @@
                                   rival-final-iter (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
+                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])
+        (if (fl= (last base-exs) sollya-point)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-correct-roduning" 1)
+            (timeline-push!/unsafe 'outcomes 0 0 "sollya-faithful-roduning" 1))]
 
        ; Only Sollya has succeeded
        [(and (equal? 'valid sollya-point-status) (< external-point-time (*sampling-timeout*)))
