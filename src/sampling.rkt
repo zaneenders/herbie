@@ -450,8 +450,8 @@
        ; Points that every tools fail to evaluate when the precision is unreacheble
        [else
         (timeline-push!/unsafe 'outcomes baseline-time
-                               rival-final-iter "no-one-baseline" 1)
+                               rival-final-iter "exit-baseline" 1)
         (timeline-push!/unsafe 'outcomes external-point-time
-                               rival-final-iter "no-one-sollya" 1)
+                               rival-final-iter "exit-sollya" 1)
         (timeline-push!/unsafe 'outcomes rival-time
-                               rival-final-iter "no-one-rival" 1)])]))
+                               rival-final-iter "exit-rival" 1)])]))
