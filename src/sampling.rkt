@@ -310,7 +310,7 @@
        [(and (equal? 'valid baseline-status) (equal? rival-status 'valid)
              (< baseline-time (*sampling-timeout*)) (< rival-time (*sampling-timeout*)))
         (cond
-          [(equal? (last rival-exs) (fl 0.0))
+          [(or (equal? (last rival-exs) (fl 0.0)) (equal? (last rival-exs) (fl -0.0)))
            (timeline-push!/unsafe 'outcomes rival-time
                                    rival-final-iter (format "~a-rival+baseline-zero" rival-status) 1)]
           [(flinfinite? (last rival-exs))
@@ -324,7 +324,7 @@
        [(and (equal? 'valid sollya-point-status) (equal? 'valid baseline-status)
              (< external-point-time (*sampling-timeout*)) (< baseline-time (*sampling-timeout*)))
         (cond
-          [(equal? (last base-exs) (fl 0.0))
+          [(or (equal? (last base-exs) (fl 0.0)) (equal? (last base-exs) (fl -0.0)))
            (timeline-push!/unsafe 'outcomes external-point-time
                                   rival-final-iter (format "~a-sollya+baseline-zero" sollya-point-status) 1)]
           [(flinfinite? (last base-exs))
@@ -341,7 +341,7 @@
        [(and (equal? 'valid sollya-point-status) (equal? rival-status 'valid)
              (< external-point-time (*sampling-timeout*)) (< rival-time (*sampling-timeout*)))
         (cond
-          [(equal? (last rival-exs) (fl 0.0))
+          [(or (equal? (last rival-exs) (fl 0.0)) (equal? (last rival-exs) (fl -0.0)))
            (timeline-push!/unsafe 'outcomes rival-time
                                rival-final-iter (format "~a-rival+sollya-zero" rival-status) 1)]
           [(flinfinite? (last rival-exs))
@@ -358,7 +358,7 @@
        [(and (equal? rival-status 'valid)
              (< rival-time (*sampling-timeout*)))
         (cond
-          [(equal? (last rival-exs) (fl 0.0))
+          [(or (equal? (last rival-exs) (fl 0.0)) (equal? (last rival-exs) (fl -0.0)))
            (timeline-push!/unsafe 'outcomes rival-time
                                   rival-final-iter (format "~a-rival-only-zero" rival-status) 1)]
           [(flinfinite? (last rival-exs))
@@ -371,7 +371,7 @@
        ; Only Sollya has succeeded
        [(and (equal? 'valid sollya-point-status) (< external-point-time (*sampling-timeout*)))
         (cond
-          [(equal? sollya-point (fl 0.0))
+          [(or (equal? sollya-point (fl 0.0)) (equal? sollya-point (fl -0.0)))
            (timeline-push!/unsafe 'outcomes external-point-time
                                   rival-final-iter (format "~a-sollya-only-zero" sollya-point-status) 1)]
           [(flinfinite? sollya-point)
@@ -384,7 +384,7 @@
        ; Only Baseline has succeeded
        [(and (equal? 'valid baseline-status) (< baseline-time (*sampling-timeout*)))
         (cond
-          [(equal? (last base-exs) (fl 0.0))
+          [(or (equal? (last base-exs) (fl 0.0)) (equal? (last base-exs) (fl -0.0)))
            (timeline-push!/unsafe 'outcomes baseline-time
                                   rival-final-iter (format "~a-baseline-only-zero" baseline-status) 1)]
           [(flinfinite? (last base-exs))
@@ -408,7 +408,7 @@
        [(and (equal? 'valid sollya-point-status) (equal? 'valid baseline-status)
              (< external-point-time (*sampling-timeout*)) (< baseline-time (*sampling-timeout*)))
         (cond
-          [(equal? (last base-exs) (fl 0.0))
+          [(or (equal? (last base-exs) (fl 0.0)) (equal? (last base-exs) (fl -0.0)))
            (timeline-push!/unsafe 'outcomes external-point-time
                                   rival-final-iter (format "~a-sollya+baseline-zero" sollya-point-status) 1)]
           [(flinfinite? (last base-exs))
@@ -424,7 +424,7 @@
        ; Only Sollya has succeeded
        [(and (equal? 'valid sollya-point-status) (< external-point-time (*sampling-timeout*)))
         (cond
-          [(equal? sollya-point (fl 0.0))
+          [(or (equal? sollya-point (fl 0.0)) (equal? sollya-point (fl -0.0)))
            (timeline-push!/unsafe 'outcomes external-point-time
                                   rival-final-iter (format "~a-sollya-only-zero" sollya-point-status) 1)]
           [(flinfinite? sollya-point)
@@ -437,7 +437,7 @@
        ; Only Baseline has succeeded
        [(and (equal? 'valid baseline-status) (< baseline-time (*sampling-timeout*)))
         (cond
-          [(equal? (last base-exs) (fl 0.0))
+          [(or (equal? (last base-exs) (fl 0.0)) (equal? (last base-exs) (fl -0.0)))
            (timeline-push!/unsafe 'outcomes baseline-time
                                   rival-final-iter (format "~a-baseline-only-zero" baseline-status) 1)]
           [(flinfinite? (last base-exs))
