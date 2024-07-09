@@ -332,10 +332,7 @@
                                   rival-final-iter (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])
-        (if (fl= (last base-exs) sollya-point)
-            (timeline-push!/unsafe 'outcomes 0 0 "sollya-correct-roduning" 1)
-            (timeline-push!/unsafe 'outcomes 0 0 "sollya-faithful-roduning" 1))]
+                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
 
        ; Sollya and Rival have succeeded
        [(and (equal? 'valid sollya-point-status) (equal? rival-status 'valid)
@@ -349,10 +346,7 @@
                                rival-final-iter (format "~a-rival+sollya-inf" rival-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes rival-time
-                               rival-final-iter (format "~a-rival+sollya-real" rival-status) 1)])
-        (if (fl= (last rival-exs) sollya-point)
-            (timeline-push!/unsafe 'outcomes 0 0 "sollya-correct-roduning" 1)
-            (timeline-push!/unsafe 'outcomes 0 0 "sollya-faithful-roduning" 1))]
+                               rival-final-iter (format "~a-rival+sollya-real" rival-status) 1)])]
 
        ; Only Rival has succeeded
        [(and (equal? rival-status 'valid)
@@ -416,10 +410,7 @@
                                   rival-final-iter (format "~a-sollya+baseline-inf" sollya-point-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes external-point-time
-                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])
-        (if (fl= (last base-exs) sollya-point)
-            (timeline-push!/unsafe 'outcomes 0 0 "sollya-correct-roduning" 1)
-            (timeline-push!/unsafe 'outcomes 0 0 "sollya-faithful-roduning" 1))]
+                                  rival-final-iter (format "~a-sollya+baseline-real" sollya-point-status) 1)])]
 
        ; Only Sollya has succeeded
        [(and (equal? 'valid sollya-point-status) (< external-point-time (*sampling-timeout*)))
