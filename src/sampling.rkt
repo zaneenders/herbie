@@ -445,4 +445,13 @@
                                   rival-final-iter (format "~a-baseline-only-inf" baseline-status) 1)]
           [else
            (timeline-push!/unsafe 'outcomes baseline-time
-                                  rival-final-iter (format "~a-baseline-only-real" baseline-status) 1)])])]))
+                                  rival-final-iter (format "~a-baseline-only-real" baseline-status) 1)])]
+       
+       ; Points that every tools fail to evaluate when the precision is unreacheble
+       [else
+        (timeline-push!/unsafe 'outcomes baseline-time
+                               rival-final-iter "no-one-baseline" 1)
+        (timeline-push!/unsafe 'outcomes external-point-time
+                               rival-final-iter "no-one-sollya" 1)
+        (timeline-push!/unsafe 'outcomes rival-time
+                               rival-final-iter "no-one-rival" 1)])]))
