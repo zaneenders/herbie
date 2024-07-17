@@ -18,10 +18,10 @@ def plot_speed_graph(outcomes, ax):
 
     base = np.array(tool_cmp2speed(sollya_cmp)[1][:5])
 
-    ax.plot(tool_cmp2speed(rival_cmp)[0][:5], np.array(tool_cmp2speed(rival_cmp)[1][:5])/base, '.-', linewidth=2.0, color='r', label='rival')
+    ax.plot(tool_cmp2speed(rival_cmp)[0][:5], np.array(tool_cmp2speed(rival_cmp)[1][:5])/base, '.-', linewidth=2.0, color='r', label='reval')
     ax.plot(tool_cmp2speed(baseline_cmp)[0][:5], np.array(tool_cmp2speed(baseline_cmp)[1][:5])/base, '--', linewidth=2.0, color='g',
             label='baseline')
-    ax.plot(tool_cmp2speed(sollya_cmp)[0][:5], np.array(tool_cmp2speed(sollya_cmp)[1][:5])/base, '-*', linewidth=2.0, color='b',
+    ax.plot(tool_cmp2speed(sollya_cmp)[0][:5], np.array(tool_cmp2speed(sollya_cmp)[1][:5])/base, '-', linewidth=2.0, color='b',
             label='sollya')
 
 
@@ -46,7 +46,7 @@ def load_outcomes(url):
     return outcomes
 
 parser = argparse.ArgumentParser(prog='histograms.py', description='Script outputs mixed precision histograms for a Herbie run')
-parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720264465:nightly:artem-popl-eval:a2e296cbbd/timeline.json")
+parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720610343:nightly:artem-popl-eval:1a5f33f51e/timeline.json")
 args = parser.parse_args()
 
 outcomes_20ms = load_outcomes(args.timeline)

@@ -20,7 +20,8 @@ def plot_histogram(args):
     rival = rival[rival["op"] != 'adjust']
 
     print("\\newcommand{\TuningTime}{" + str(adjust_time) + "\\xspace}")
-    print("\\newcommand{\TuningTimePercentage}{" + str(round(adjust_time/rival['time'].sum()*100, 4)) + "\\xspace}")
+    print("\\newcommand{\TuningTimePercentage}{" + str(round(adjust_time/rival['time'].sum()*1000 * 100, 1)) + "}")
+    print("\\newcommand{\RivalSpeedupHistograms}{" + str(round(rival['time'].sum()/baseline['time'].sum(), 2)) + "}")
 
     fig, ax = plt.subplots(figsize=(6.5, 2.5))
 
@@ -30,7 +31,7 @@ def plot_histogram(args):
     buckets_rival = bucket_precisions_by_bins(rival, bins)
 
     ax.bar(np.arange(len(bins)) + 0.4, buckets_base, color="green", alpha=1, width=0.6, label='baseline', hatch='/')
-    ax.bar(np.arange(len(bins)) + 0.6, buckets_rival, color="red", alpha=0.7, width=0.6, label='rival')
+    ax.bar(np.arange(len(bins)) + 0.6, buckets_rival, color="red", alpha=0.7, width=0.6, label='reval')
 
     temp = np.zeros_like(buckets_rival)
     temp[-1] = adjust_time

@@ -9,7 +9,7 @@ def plot_points_graph(outcomes, title, ax):
     series_labels = ['zero', 'non-zero']
     colors = ['tab:blue',  'tab:orange', 'tab:green']
 
-    category_labels = ['Rival', 'Sollya', 'Baseline']
+    category_labels = ['Reval', 'Sollya', 'Baseline']
 
     data = np.zeros((len(series_labels), len(category_labels)))
 
@@ -49,7 +49,40 @@ def plot_points_graph(outcomes, title, ax):
     infinite_difference += outcomes.loc[outcomes['tool_name'] == 'valid-rival+sollya-inf']['number_of_points'].sum()
     infinite_difference += outcomes.loc[outcomes['tool_name'] == 'valid-rival-only-inf']['number_of_points'].sum()
 
+    sollya_faithful_cnt = outcomes.loc[outcomes['tool_name'] == 'sollya-faithful-roduning']['number_of_points'].sum()
+    sollya_correct_cnt = outcomes.loc[outcomes['tool_name'] == 'sollya-correct-roduning']['number_of_points'].sum()
+
+    sollya_exit_times = outcomes.loc[outcomes['tool_name'] == 'exit-sollya']['time'].sum()/1000
+    sollya_exit_cnt = outcomes.loc[outcomes['tool_name'] == 'exit-sollya']['number_of_points'].sum()
+
+    rival_exit_times = outcomes.loc[outcomes['tool_name'] == 'exit-rival']['time'].sum()/1000
+    rival_exit_cnt = outcomes.loc[outcomes['tool_name'] == 'exit-rival']['number_of_points'].sum()
+
+    base_exit_times = outcomes.loc[outcomes['tool_name'] == 'exit-baseline']['time'].sum()/1000
+    base_exit_cnt = outcomes.loc[outcomes['tool_name'] == 'exit-baseline']['number_of_points'].sum()
+
+    print("\\newcommand{\SollyaExitTime}{" + str(round(sollya_exit_times, 2)) + "\\xspace}")
+    print("\\newcommand{\RivalExitTime}{" + str(round(rival_exit_times, 2)) + "\\xspace}")
+    print("\\newcommand{\BaselineExitTime}{" + str(round(base_exit_times, 2)) + "\\xspace}")
+    print("\\newcommand{\RivalExitTimetoSollya}{" + str(round(sollya_exit_times/rival_exit_times, 2)) + "\\xspace}")
+    print("\\newcommand{\RivalExitTimetoBaseline}{" + str(round(base_exit_times / rival_exit_times, 2)) + "\\xspace}")
+
+    print("\\newcommand{\SollyaExitCnt}{" + str(sollya_exit_cnt) + "\\xspace}")
+    print("\\newcommand{\RivalExitCnt}{" + str(rival_exit_cnt) + "\\xspace}")
+    print("\\newcommand{\BaselineExitCnt}{" + str(base_exit_cnt) + "\\xspace}")
+
+    print("\\newcommand{\CorrecttoFaithfulSollya}{" + str(round(100*sollya_correct_cnt/(sollya_faithful_cnt+sollya_correct_cnt), 2)) + "\\xspace}")
+    print("\\newcommand{\SollyaFaithfulCnt}{" + str(sollya_faithful_cnt) + "\\xspace}")
     print("\\newcommand{\SamplingInfiniteDifference}{" + str(infinite_difference) + "\\xspace}")
+    print("\\newcommand{\RivalZeros}{" + str(int(data[0][0])) + "\\xspace}")
+    print("\\newcommand{\BaselineZeros}{" + str(int(data[0][2])) + "\\xspace}")
+    print("\\newcommand{\RivalNonZero}{" + str(int(data[1][0])) + "\\xspace}")
+    print("\\newcommand{\BaselineNonZero}{" + str(int(data[1][2])) + "\\xspace}")
+    print("\\newcommand{\SollyaZeros}{" + str(int(data[0][1])) + "\\xspace}")
+    print("\\newcommand{\SollyaNonZero}{" + str(int(data[1][1])) + "\\xspace}")
+
+
+
 
     # Plotting top part of the bar
     bottom = np.zeros(len(category_labels))
@@ -87,7 +120,7 @@ def load_outcomes(url):
 
 
 parser = argparse.ArgumentParser(prog='histograms.py', description='Script outputs mixed precision histograms for a Herbie run')
-parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720264465:nightly:artem-popl-eval:a2e296cbbd/timeline.json")
+parser.add_argument('-t', '--timeline', dest='timeline', default="https://nightly.cs.washington.edu/reports/herbie/1720610343:nightly:artem-popl-eval:1a5f33f51e/timeline.json")
 args = parser.parse_args()
 
 outcomes = load_outcomes(args.timeline)
