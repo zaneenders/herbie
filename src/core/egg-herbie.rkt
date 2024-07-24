@@ -1193,8 +1193,10 @@
   ;; run the rules
   (let loop ([iter-limit iter-limit])
     (define egg-graph (egraph-copy egg-graph0))
+    (eprintf "  running ~a...\n" params)
     (define iteration-data
       (egraph-run egg-graph ffi-rules node-limit iter-limit scheduler const-folding?))
+    (eprintf "  done\n")
 
     (timeline-push! 'stop (egraph-stop-reason egg-graph) 1)
     (cond
@@ -1216,11 +1218,13 @@
   ; run the schedule
   (define rule-apps (make-hash))
   (define egg-graph
-    (for/fold ([egg-graph egg-graph0]) ([instr (in-list schedule)])
+    (for/fold ([egg-graph egg-graph0]) ([instr (in-list schedule)] [i (in-naturals 1)])
       (match-define (cons rules params) instr)
       ; run rules in the egraph
       (define egg-rules (expand-rules rules))
+      (eprintf " phase ~a [~a]...\n" i params)
       (define-values (egg-graph* iteration-data) (egraph-run-rules egg-graph egg-rules params))
+      (eprintf " done\n")
 
       ; get cost statistics
       (for/fold ([time 0]) ([iter (in-list iteration-data)] [i (in-naturals)])
@@ -1305,23 +1309,30 @@
 (define (run-egg runner cmd)
   ;; Run egg using runner
   (define ctx (egg-runner-ctx runner))
+  (eprintf "run...\n")
   (define-values (root-ids egg-graph)
     (egraph-run-schedule (egg-runner-exprs runner) (egg-runner-schedule runner) ctx))
+  (eprintf "done\n")
   ; Perform extraction
   (match cmd
     [`(single . ,extractor) ; single expression extraction
+     (eprintf "single...")
      (define regraph (make-regraph egg-graph))
      (define extract-id (extractor regraph))
      (define reprs (egg-runner-reprs runner))
+     (eprintf "done\n")
      (for/list ([id (in-list root-ids)] [repr (in-list reprs)])
        (regraph-extract-best regraph extract-id id repr))]
     [`(multi . ,extractor) ; multi expression extraction
+     (eprintf "multi...")
      (define regraph (make-regraph egg-graph))
      (define extract-id (extractor regraph))
      (define reprs (egg-runner-reprs runner))
+     (eprintf "done\n")
      (for/list ([id (in-list root-ids)] [repr (in-list reprs)])
        (regraph-extract-variants regraph extract-id id repr))]
     [`(proofs . ((,start-exprs . ,end-exprs) ...)) ; proof extraction
+     (eprintf "proof...")
      (for/list ([start (in-list start-exprs)] [end (in-list end-exprs)])
        (unless (egraph-expr-equal? egg-graph start end ctx)
          (error 'run-egg
@@ -1329,6 +1340,7 @@
                 start
                 end))
        (define proof (egraph-get-proof egg-graph start end ctx))
+       (eprintf "done\n")
        (when (null? proof)
          (error 'run-egg "proof extraction failed between`~a` and `~a`" start end))
        proof)]
