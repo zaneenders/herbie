@@ -7,7 +7,7 @@
 (define all-flags
   #hash([precision . (double fallback)]
         [setup . (simplify search)]
-        [localize . (costs errors)]
+        [localize . (errors)]
         [generate . (rr taylor simplify better-rr proofs)]
         [reduce . (regimes avg-error binary-search branch-expressions)]
         [rules
