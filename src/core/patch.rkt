@@ -5,7 +5,6 @@
          "../syntax/syntax.rkt"
          "../syntax/types.rkt"
          "egg-herbie.rkt"
-         "rr.rkt"
          "simplify.rkt"
          "taylor.rkt"
          "../utils/alternative.rkt"
