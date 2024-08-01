@@ -217,7 +217,7 @@
                         (not (patch-table-has-expr? expr))
                         (~a (representation-name repr)))
         expr))
-    (set! localized-exprs (remove-duplicates (append localized-exprs cost-localized))))
+    (set! localized-exprs (remove-duplicates localized-exprs)))
 
   (timeline-event! 'localize)
   (when (flag-set? 'localize 'errors)
