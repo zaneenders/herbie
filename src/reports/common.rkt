@@ -28,12 +28,13 @@
          render-warnings
          render-large
          render-comparison
+         render-specification
          render-program
          render-bogosity
          render-help
-         render-fpcore
          render-reproduction
          format-percent
+         write-html
          program->fpcore
          program->tex
          fpcore->string
@@ -50,8 +51,12 @@
          expr->tex
          core->js)
 
+(define (write-html xexpr out)
+  (fprintf out "<!doctype html>\n")
+  (write-xexpr xexpr out))
+
 (define (program->fpcore expr ctx #:ident [ident #f])
-  (define body (prog->fpcore expr (context-repr ctx)))
+  (define body (prog->fpcore expr))
   (if ident (list 'FPCore ident (context-vars ctx) body) (list 'FPCore (context-vars ctx) body)))
 
 (define (fpcore-add-props core props)
@@ -106,6 +111,27 @@
 (define (render-comparison #:title [title #f] name a b)
   (render-large #:title title name a `(span ((class "unit")) " → ") b))
 
+(define (render-specification test #:bogosity [bogosity #f])
+  (define-values (dropdown body)
+    (render-program (test-spec test)
+                    (test-context test)
+                    #:pre (test-pre test)
+                    #:ident (test-identifier test)))
+  `(section (details ([id "specification"] (class "programs"))
+                     (summary (h2 "Specification")
+                              ,dropdown
+                              (a ((class "help-button float") [href ,(doc-url "report.html#spec")]
+                                                              [target "_blank"])
+                                 "?"))
+                     ,body
+                     ,@(cond
+                         [bogosity
+                          `((p "Sampling outcomes in "
+                               (kbd ,(~a (representation-name (test-output-repr test))))
+                               " precision:")
+                            ,(render-bogosity bogosity))]
+                         [else '()]))))
+
 (define languages
   `(("FPCore" "fpcore" ,(λ (c i) (fpcore->string c))) ("C" "c" ,core->c)
                                                       ("Fortran" "f03" ,core->fortran)
@@ -126,7 +152,7 @@
   (match i
     [(list 'abs x)
      (define x* (string->symbol (string-append (symbol->string x) "_m")))
-     (define e* (replace-vars (list (cons x x*)) e))
+     (define e* (replace-expression e x x*))
      (define p (index-of (context-vars c) x))
      (define c* (struct-copy context c [vars (list-set (context-vars c) p x*)]))
      (cons e* c*)]
@@ -139,9 +165,7 @@
      (define c* (struct-copy context c [vars (list-set (context-vars c) p x*)]))
      (define c** (context-extend c* x-sign r))
      (define e*
-       (list (get-parametric-operator '* r (context-repr c))
-             x-sign
-             (replace-vars (list (cons x x*)) e)))
+       (list (get-parametric-operator '* r (context-repr c)) x-sign (replace-expression e x x*)))
      (cons e* c**)]
     [_ (cons e c)]))
 
@@ -266,18 +290,15 @@
                  `(option ,lang))))
 
   (define body
-    `(div ,(if (equal? precondition '(TRUE))
-               ""
-               `(div ([id "precondition"])
-                     (div ((class "program math"))
-                          "\\["
-                          ,(expr->tex (prog->fpcore precondition output-repr))
-                          "\\]")))
-          (div ((class "implementation") [data-language "Math"])
-               (div ((class "program math")) "\\[" ,math-out "\\]"))
-          ,@(for/list ([(lang out) (in-dict versions)])
-              `(div ((class "implementation") [data-language ,lang])
-                    (pre ((class "program")) ,out)))))
+    `(div
+      ,(if (equal? precondition '(TRUE))
+           ""
+           `(div ([id "precondition"])
+                 (div ((class "program math")) "\\[" ,(expr->tex (prog->fpcore precondition)) "\\]")))
+      (div ((class "implementation") [data-language "Math"])
+           (div ((class "program math")) "\\[" ,math-out "\\]"))
+      ,@(for/list ([(lang out) (in-dict versions)])
+          `(div ((class "implementation") [data-language ,lang]) (pre ((class "program")) ,out)))))
 
   (values dropdown body))
 
@@ -294,27 +315,25 @@
 (define/contract (render-fpcore test)
   (-> test? string?)
   (define output-repr (test-output-repr test))
-  (string-join (filter identity
-                       (list (if (test-identifier test)
-                                 (format "(FPCore ~a ~a" (test-identifier test) (test-vars test))
-                                 (format "(FPCore ~a" (test-vars test)))
-                             (format "  :name ~s" (test-name test))
-                             (format "  :precision ~s" (representation-name (test-output-repr test)))
-                             (if (equal? (test-pre test) '(TRUE))
-                                 #f
-                                 (format "  :pre ~a" (prog->fpcore (test-pre test) output-repr)))
-                             (if (equal? (test-expected test) #t)
-                                 #f
-                                 (format "  :herbie-expected ~a" (test-expected test)))
-                             (and (test-output test)
-                                  (not (null? (test-output test)))
-                                  (format "\n~a"
-                                          (string-join (map (lambda (exp)
-                                                              (format "  :alt\n  ~a\n" (car exp)))
-                                                            (test-output test))
-                                                       "\n")))
-                             (format "  ~a)" (prog->fpcore (test-input test) output-repr))))
-               "\n"))
+  (string-join
+   (filter
+    identity
+    (list
+     (if (test-identifier test)
+         (format "(FPCore ~a ~a" (test-identifier test) (test-vars test))
+         (format "(FPCore ~a" (test-vars test)))
+     (format "  :name ~s" (test-name test))
+     (format "  :precision ~s" (representation-name (test-output-repr test)))
+     (if (equal? (test-pre test) '(TRUE)) #f (format "  :pre ~a" (prog->fpcore (test-pre test))))
+     (if (equal? (test-expected test) #t) #f (format "  :herbie-expected ~a" (test-expected test)))
+     (and (test-output test)
+          (not (null? (test-output test)))
+          (format "\n~a"
+                  (string-join (map (lambda (exp) (format "  :alt\n  ~a\n" (car exp)))
+                                    (test-output test))
+                               "\n")))
+     (format "  ~a)" (prog->fpcore (test-input test)))))
+   "\n"))
 
 (define (format-percent num den)
   (string-append (if (zero? den)

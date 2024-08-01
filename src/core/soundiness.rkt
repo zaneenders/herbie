@@ -5,8 +5,7 @@
          "programs.rkt"
          "egg-herbie.rkt"
          "rules.rkt"
-         "../syntax/sugar.rkt"
-         "../syntax/syntax.rkt")
+         "../syntax/sugar.rkt")
 
 (provide add-soundiness)
 
@@ -74,7 +73,7 @@
       ; recursive rewrite using egg (spec -> impl)
       [(alt expr `(rr ,loc ,(? egg-runner? runner) #f #f) `(,prev) _)
        (define start-expr (location-get loc (alt-expr prev)))
-       (define start-expr* (expand-accelerators (prog->spec start-expr)))
+       (define start-expr* (prog->spec start-expr))
        (define end-expr (location-get loc expr))
        (define rewrite (cons start-expr* end-expr))
        (hash-set! alt->query&rws (altn->key altn) (cons runner rewrite))
@@ -88,7 +87,7 @@
        (define start-expr*
          (match (alt-event prev)
            [(list 'taylor _ ...) start-expr] ; input was inserted as-is
-           [_ (expand-accelerators (prog->spec start-expr))]))
+           [_ (prog->spec start-expr)]))
        (define rewrite (cons start-expr* end-expr))
 
        (hash-set! alt->query&rws (altn->key altn) (cons runner rewrite))
@@ -119,23 +118,12 @@
 ;; Adds proof information to alternatives.
 (define (add-soundiness-to altn pcontext ctx alt->proof)
   (match altn
-    ; recursive rewrite using egg
-    [(alt expr `(rr ,loc ,(? egg-runner? runner) #f #f) `(,prev) _)
+    ; recursive rewrite or simplify, both using egg
+    [(alt expr (list phase loc (? egg-runner? runner) #f #f) `(,prev) _)
+     #:when (or (equal? phase 'simplify) (equal? phase 'rr))
      (match-define (cons proof* errs)
        (canonicalize-proof (alt-expr altn) (alt->proof altn) loc pcontext ctx))
      (alt expr `(rr ,loc ,runner ,proof* ,errs) `(,prev) '())]
-
-    ; recursive rewrite using rewrite-once
-    [(alt expr `(rr ,loc ,(? rule? input) #f #f) `(,prev) _)
-     (define proof (list (alt-expr prev) (list 'Rewrite=> (rule-name input) (alt-expr altn))))
-     (define errs (get-proof-errors proof pcontext ctx))
-     (alt expr `(rr ,loc ,input ,proof ,errs) `(,prev) '())]
-
-    ; simplify using egg
-    [(alt expr `(simplify ,loc ,(? egg-runner? runner) #f #f) `(,prev) _)
-     (match-define (cons proof* errs)
-       (canonicalize-proof (alt-expr altn) (alt->proof altn) loc pcontext ctx))
-     (alt expr `(simplify ,loc ,runner ,proof* ,errs) `(,prev) '())]
 
     ; everything else
     [_ altn]))

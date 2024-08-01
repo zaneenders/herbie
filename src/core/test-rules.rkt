@@ -2,17 +2,14 @@
 
 (require rackunit)
 (require "../utils/common.rkt"
-         "../utils/errors.rkt"
          "../utils/float.rkt"
          "rules.rkt"
          (submod "rules.rkt" internals)
          "../syntax/platform.rkt"
          "../syntax/load-plugin.rkt"
-         "../syntax/syntax.rkt"
          "../syntax/sugar.rkt"
          "../syntax/types.rkt"
          "compiler.rkt"
-         "programs.rkt"
          "rival.rkt"
          "sampling.rkt")
 
@@ -22,20 +19,21 @@
 
 ;; WARNING: These aren't treated as preconditions, they are only used for range inference
 (define *conditions*
-  `([asinh-2_binary64 . (>= x 0)] [asinh-2_binary32 . (>= x 0)]
-                                  ;; These next three approximate pi so that range analysis will work
-                                  [asin-sin-s_binary64 . (<= (fabs x) 1.5708)]
-                                  [asin-sin-s_binary32 . (<= (fabs x) 1.5708)]
-                                  [acos-cos-s_binary64 . (and (<= 0 x) (<= x 3.1416))]
-                                  [acos-cos-s_binary32 . (and (<= 0 x) (<= x 3.1416))]
-                                  [atan-tan-s_binary64 . (<= (fabs x) 1.5708)]
-                                  [atan-tan-s_binary32 . (<= (fabs x) 1.5708)]
-                                  [pow-unpow_binary64 . (>= a 0)]
-                                  [pow-unpow_binary32 . (>= a 0)]
-                                  [pow-pow_binary64 . (>= a 0)]
-                                  [pow-pow_binary32 . (>= a 0)]
-                                  [sqrt-pow1_binary64 . (>= x 0)]
-                                  [sqrt-pow1_binary32 . (>= x 0)]))
+  (list '[asinh-2_binary64 . (>= x 0)]
+        '[asinh-2_binary32 . (>= x 0)]
+        '[pow-unpow_binary64 . (>= a 0)]
+        '[pow-unpow_binary32 . (>= a 0)]
+        '[pow-pow_binary64 . (>= a 0)]
+        '[pow-pow_binary32 . (>= a 0)]
+        '[sqrt-pow1_binary64 . (>= x 0)]
+        '[sqrt-pow1_binary32 . (>= x 0)]
+        ;; These next three approximate pi so that range analysis will work
+        '[asin-sin-s_binary64 . (<= (fabs x) 1.5708)]
+        '[asin-sin-s_binary32 . (<= (fabs x) 1.5708)]
+        '[acos-cos-s_binary64 . (and (<= 0 x) (<= x 3.1416))]
+        '[acos-cos-s_binary32 . (and (<= 0 x) (<= x 3.1416))]
+        '[atan-tan-s_binary64 . (<= (fabs x) 1.5708)]
+        '[atan-tan-s_binary32 . (<= (fabs x) 1.5708)]))
 
 (define (rule->impl-rules rule)
   (platform-impl-rules (list rule)))
@@ -46,8 +44,8 @@
   (define itypes (map cdr env))
   (define ctx (context vars repr itypes))
 
-  (define spec1 (expand-accelerators (prog->spec p1)))
-  (define spec2 (expand-accelerators (prog->spec p2)))
+  (define spec1 (prog->spec p1))
+  (define spec2 (prog->spec p2))
   (match-define (list pts exs)
     (parameterize ([*num-points* (num-test-points)] [*max-find-range-depth* 0])
       (cdr (sample-points '(TRUE) (list spec1) (list ctx)))))
@@ -69,8 +67,8 @@
   (define ctx (context fv repr (map (curry dict-ref itypes) fv)))
 
   (define pre (dict-ref *conditions* name '(TRUE)))
-  (define spec1 (expand-accelerators (prog->spec p1)))
-  (define spec2 (expand-accelerators (prog->spec p2)))
+  (define spec1 (prog->spec p1))
+  (define spec2 (prog->spec p2))
   (match-define (list pts exs1 exs2)
     (parameterize ([*num-points* (num-test-points)] [*max-find-range-depth* 0])
       (cdr (sample-points pre (list spec1 spec2) (list ctx ctx)))))
