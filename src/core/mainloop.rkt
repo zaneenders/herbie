@@ -203,23 +203,6 @@
   (define localized-exprs empty)
   (define repr (context-repr (*context*)))
 
-  (when (flag-set? 'localize 'costs)
-    (define loc-costss (batch-localize-costs exprs (*context*)))
-    (define cost-localized
-      (for/list ([loc-costs (in-list loc-costss)]
-                 #:when true
-                 [(cost-diff expr) (in-dict loc-costs)]
-                 [_ (in-range (*localize-expressions-limit*))])
-        (if (> cost-diff 0)
-        (timeline-push! 'locations
-                        (~a expr)
-                        "cost-diff"
-                        cost-diff
-                        (not (patch-table-has-expr? expr))
-                        (~a (representation-name repr)))
-        expr)))
-
-    (set! localized-exprs (remove-duplicates localized-exprs cost-localized)))
 
   (timeline-event! 'localize)
   (when (flag-set? 'localize 'errors)
