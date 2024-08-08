@@ -210,14 +210,14 @@
                  #:when true
                  [(cost-diff expr) (in-dict loc-costs)]
                  [_ (in-range (*localize-expressions-limit*))])
-        
+        (if (> cost-diff 0)
         (timeline-push! 'locations
                         (~a expr)
                         "cost-diff"
                         cost-diff
                         (not (patch-table-has-expr? expr))
                         (~a (representation-name repr)))
-        expr))
+        expr)))
 
     (set! localized-exprs (remove-duplicates localized-exprs cost-localized)))
 
