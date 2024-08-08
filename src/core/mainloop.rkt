@@ -199,18 +199,20 @@
 
   (when (flag-set? 'localize 'costs)
     (define loc-costss (batch-localize-costs exprs (*context*)))
-    (define cost-localized
-      (for/list ([loc-costs (in-list loc-costss)]
-                 #:when true
-                 [(cost-diff expr) (in-dict loc-costs)]
-                 [_ (in-range (*localize-expressions-limit*))])
-        (timeline-push! 'locations
-                        (~a expr)
-                        "cost-diff"
-                        cost-diff
-                        (not (patch-table-has-expr? expr))
-                        (~a (representation-name repr)))
-        expr))
+    (define cost-localized '())
+    (for ([loc-costs (in-list loc-costss)]
+                #:when true
+                [(cost-diff expr) (in-dict loc-costs)]
+                [_ (in-range (*localize-expressions-limit*))])
+                (when (> cost-diff 0)
+      (begin(timeline-push! 'locations
+                      (~a expr)
+                      "cost-diff"
+                      cost-diff
+                      (not (patch-table-has-expr? expr))
+                      (~a (representation-name repr)))
+      (set! cost-localized (cons expr cost-localized))
+      )))
     (set! localized-exprs (remove-duplicates (append localized-exprs cost-localized))))
 
   (timeline-event! 'localize)
