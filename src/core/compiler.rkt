@@ -4,7 +4,8 @@
          "../syntax/types.rkt"
          "../utils/timeline.rkt"
          "../utils/float.rkt"
-         "batch.rkt")
+         "batch.rkt"
+         "logspace.rkt")
 
 (provide compile-progs
          compile-prog)
@@ -62,6 +63,9 @@
       (match node
         [(literal value (app get-representation repr)) (list (const (real->repr value repr)))]
         [(list 'if c t f) (list if-proc c t f)]
+        [(list op args ...)
+         #:when (logop? op)
+         (cons (logop op) args)]
         [(list op args ...) (cons (impl-info op 'fl) args)])))
 
   (make-progs-interpreter (batch-vars batch) instructions (batch-roots batch)))

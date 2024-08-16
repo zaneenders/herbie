@@ -7,6 +7,8 @@
          "points.rkt"
          "programs.rkt"
          "sampling.rkt"
+         "compiler.rkt"
+         "logspace.rkt"
          "../config.rkt"
          "../syntax/sugar.rkt"
          "../syntax/types.rkt"
@@ -71,6 +73,7 @@
   (define subexprs-fn
     (parameterize ([*max-mpfr-prec* 128])
       (eval-progs-real spec-list ctxs)))
+  (eprintf "~a\n" spec-list)
   (values subexprs repr-hash subexprs-fn))
 
 (define (predict-errors ctx pctx subexprs-list repr-hash subexprs-fn)
@@ -106,6 +109,10 @@
     (define (exacts-ref subexpr)
       (define exacts-val (hash-ref exacts-hash subexpr))
       ((representation-repr->bf (hash-ref repr-hash subexpr)) exacts-val))
+
+    (define subexprs-log (compile-progs (list '(log+ x y)) ctx))
+    (define logpt (map flonum->logfl pt))
+    (eprintf "~a" (apply subexprs-log logpt))
 
     (for/list ([subexpr (in-list subexprs-list)])
       (define subexpr-val (exacts-ref subexpr))

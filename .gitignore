@@ -21,6 +21,7 @@ odyssey
 *.zo
 *.dep
 herbie-compiled/
+**/compiled/
 
 # Python
 .env/
