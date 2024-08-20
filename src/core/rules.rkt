@@ -223,6 +223,7 @@
                  (arithmetic simplify fp-safe sound)
                  #:type ([a real] [b real] [c real])
                  [cancel-sign-sub (- a (* (neg b) c)) (+ a (* b c))]
+                 [cancel-sub-sign  (+ a (* b c)) (- a (* (neg b) c))]
                  [cancel-sign-sub-inv (- a (* b c)) (+ a (* (neg b) c))])
 
 ; Difference of squares
@@ -316,7 +317,8 @@
                  (fractions simplify sound)
                  #:type ([a real] [b real] [c real] [d real])
                  [div-sub (/ (- a b) c) (- (/ a c) (/ b c))]
-                 [times-frac (/ (* a b) (* c d)) (* (/ a c) (/ b d))])
+                 [times-frac (/ (* a b) (* c d)) (* (/ a c) (/ b d))]
+                 [dis-frac (/ (+ a b) c)  (+ (/ a c) (/ b c))])
 
 (define-ruleset* fractions-transform
                  (fractions sound)
