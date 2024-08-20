@@ -2,7 +2,8 @@
 
 (require math/base
          math/flonum
-         racket/struct)
+         racket/struct
+         "../syntax/syntax.rkt")
 
 (provide (all-defined-out))
 
@@ -32,7 +33,7 @@
 ; Given 2 log-float numbers a_l = (s_a, e_a) and b_l = (s_b, e_b),
 ; let c_l = a_l ± b_l
 ; then s_c = s_a,
-; and e_a = log|a_f ± b_f|
+; and e_c = log|a_f ± b_f|
 ;         = log|a_f(1 ± b_f/a_f)|
 ;         = log|a_f| + log|1 ± b_f/a_f|
 ;         = e_a + log|1 ± 2^(e_b - e_a)|
@@ -123,4 +124,27 @@
     ['logtan logtan]
     ['logsqrt logsqrt]
     ['logcbrt logcbrt]
-    [_ (error 'logop "not supported")]))
+    [_ (error 'logop symbol)]))
+
+(define (op->logop op)
+  (match op
+    ['+.f64 'log+]
+    ['-.f64 'log-]
+    ['*.f64 'log*]
+    ['/.f64 'log/]
+    ['log.f64 'logln]
+    ['exp.f64 'logexp]
+    ['pow.f64 'logexpt]
+    ['sin.f64 'logsin]
+    ['cos.f64 'logcos]
+    ['tan.f64 'logtan]
+    ['sqrt.f64 'logsqrt]
+    ['cbrt.f64 'logcbrt]
+    [_ (error 'op->logop op)]))
+
+(define (expr->logfl expr)
+  (match expr
+    [(struct literal (value prec)) (flonum->logfl (if (flonum? value) value (exact->inexact value)))]
+    [(list 'if c t f) (error 'spec->logfl "if not supported")]
+    [(list op args ...) (cons (op->logop op) (map expr->logfl args))]
+    [sym sym]))

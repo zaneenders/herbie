@@ -16,9 +16,11 @@
          "../utils/alternative.rkt"
          "../utils/float.rkt")
 
-(provide explain)
+(provide explain actual-errors)
 
 (define *top-3* (make-parameter #f))
+
+(define MAX-EXP 1023)
 
 (define (take-top-n lst)
   (if (*top-3*) (take-n 3 lst) lst))
@@ -70,13 +72,15 @@
   (define repr-hash
     (make-immutable-hash (map (lambda (e ctx) (cons e (context-repr ctx))) subexprs ctxs)))
 
+  (define subexprs-log (compile-progs (map expr->logfl subexprs) ctx))
+
   (define subexprs-fn
     (parameterize ([*max-mpfr-prec* 128])
       (eval-progs-real spec-list ctxs)))
   (eprintf "~a\n" spec-list)
-  (values subexprs repr-hash subexprs-fn))
+  (values subexprs repr-hash subexprs-fn subexprs-log))
 
-(define (predict-errors ctx pctx subexprs-list repr-hash subexprs-fn)
+(define (predict-errors ctx pctx subexprs-list repr-hash subexprs-fn subexprs-log)
   (define error-count-hash (make-hash (map (lambda (x) (cons x '())) subexprs-list)))
   (define uflow-hash (make-hash))
   (define oflow-hash (make-hash))
@@ -110,9 +114,11 @@
       (define exacts-val (hash-ref exacts-hash subexpr))
       ((representation-repr->bf (hash-ref repr-hash subexpr)) exacts-val))
 
-    (define subexprs-log (compile-progs (list '(log+ x y)) ctx))
-    (define logpt (map flonum->logfl pt))
-    (eprintf "~a" (apply subexprs-log logpt))
+    (define logfls (apply subexprs-log (map flonum->logfl pt)))
+    (define logfls-hash
+      (make-immutable-hash (map cons subexprs-list (vector->list logfls))))
+    (define (logfls-ref subexpr)
+      (hash-ref logfls-hash subexpr))
 
     (for/list ([subexpr (in-list subexprs-list)])
       (define subexpr-val (exacts-ref subexpr))
@@ -306,30 +312,38 @@
          #:when (or (list? x-ex) (list? y-ex))
          (define x (exacts-ref x-ex))
          (define y (exacts-ref y-ex))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define ylog (logfls-ref y-ex))
+         (match-define (logfl yfl ys ye) ylog)
 
          (cond
-           ;; if the numerator underflows and the denominator:
-           ;; - underflows, nan could be rescued
-           [(and (bfzero? x) (bfzero? y) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'u/u)]
-           ;; - is small enough, 0 underflow could be rescued
-           [(and (bfzero? x) (not (bfzero? subexpr-val))) (mark-erroneous! subexpr 'u/n)]
-           ;; - overflows, no rescue is possible
-
-           ;; if the numerator overflows and the denominator:
-           ;; - overflows, nan could be rescued
-           [(and (bfinfinite? x) (bfinfinite? y) (not (bfnan? subexpr-val)))
-            (mark-erroneous! subexpr 'o/o)]
-           ;; - is large enough, inf overflow can be rescued
-           [(and (bfinfinite? x) (not (bfinfinite? subexpr-val))) (mark-erroneous! subexpr 'o/n)]
-           ;; - underflow, no rescue is possible
-
-           ;; if the numerator is normal and the denominator:
-           ;; - overflows, then a rescue is possible
-           [(and (bfinfinite? y) (not (bfzero? subexpr-val))) (mark-erroneous! subexpr 'n/o)]
-           ;; - underflows, then a rescue is possible
-           [(and (bfzero? y) (not (bfinfinite? subexpr-val))) (mark-erroneous! subexpr 'n/u)]
-           ;; - is normal, then no rescue is possible
+           [(and (zero? xfl) (<= (abs (- xe ye)) MAX-EXP)) (mark-erroneous! subexpr 'u/n)]
            [else #f])]
+
+         ; (cond
+         ;   ;; if the numerator underflows and the denominator:
+         ;   ;; - underflows, nan could be rescued
+         ;   [(and (bfzero? x) (bfzero? y) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'u/u)]
+         ;   ;; - is small enough, 0 underflow could be rescued
+         ;   [(and (bfzero? x) (not (bfzero? subexpr-val))) (mark-erroneous! subexpr 'u/n)]
+         ;   ;; - overflows, no rescue is possible
+
+         ;   ;; if the numerator overflows and the denominator:
+         ;   ;; - overflows, nan could be rescued
+         ;   [(and (bfinfinite? x) (bfinfinite? y) (not (bfnan? subexpr-val)))
+         ;    (mark-erroneous! subexpr 'o/o)]
+         ;   ;; - is large enough, inf overflow can be rescued
+         ;   [(and (bfinfinite? x) (not (bfinfinite? subexpr-val))) (mark-erroneous! subexpr 'o/n)]
+         ;   ;; - underflow, no rescue is possible
+
+         ;   ;; if the numerator is normal and the denominator:
+         ;   ;; - overflows, then a rescue is possible
+         ;   [(and (bfinfinite? y) (not (bfzero? subexpr-val))) (mark-erroneous! subexpr 'n/o)]
+         ;   ;; - underflows, then a rescue is possible
+         ;   [(and (bfzero? y) (not (bfinfinite? subexpr-val))) (mark-erroneous! subexpr 'n/u)]
+         ;   ;; - is normal, then no rescue is possible
+         ;   [else #f])]
 
         [(list (or '*.f64 '*.f32) x-ex y-ex)
          #:when (or (list? x-ex) [list? y-ex])
@@ -359,6 +373,10 @@
          #:when (list? x-ex)
          (define x (exacts-ref x-ex))
          (define cond-num (bfabs (bf/ 1.bf subexpr-val)))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (eprintf "~a" xlog)
+
          (cond
            ; Condition number hallucination:
            ; Condition number is high when x = 1,
@@ -366,18 +384,22 @@
            ; [(and (bf= x 1.bf) (bfzero? subexpr-val)) #f]
 
            ; overflow rescue:
-           [(bfinfinite? x) (mark-erroneous! subexpr 'oflow-rescue)]
+           [(and (infinite? x) (not (infinite? xe)))
+             (eprintf " yes\n")
+             (mark-erroneous! subexpr 'oflow-rescue)]
 
            ; underflow rescue:
-           [(bfzero? x) (mark-erroneous! subexpr 'uflow-rescue)]
+           [(bfzero? x)
+             (eprintf " yes\n")
+             (mark-erroneous! subexpr 'uflow-rescue)]
 
            ; High Condition Number:
            ; CN(log, x) = |1 / log(x)|
-           [(bf> cond-num cond-thres) (mark-erroneous! subexpr 'sensitivity)]
+           [(bf> cond-num cond-thres) (eprintf " no\n") (mark-erroneous! subexpr 'sensitivity)]
 
-           [(bf> cond-num maybe-cond-thres) (mark-maybe! subexpr 'sensitivity)]
+           [(bf> cond-num maybe-cond-thres) (eprintf " no\n") (mark-maybe! subexpr 'sensitivity)]
 
-           [else #f])]
+           [else (eprintf " no\n") #f])]
 
         [(list (or 'exp.f64 'exp.f32) x-ex)
          #:when (list? x-ex)
@@ -601,10 +623,10 @@
           freqs))
 
 (define (explain expr ctx pctx)
-  (define-values (subexprs-list repr-hash subexprs-fn) (compile-expr expr ctx))
+  (define-values (subexprs-list repr-hash subexprs-fn subexprs-log) (compile-expr expr ctx))
 
   (define-values (error-count-hash expls->points maybe-expls->points oflow-hash uflow-hash)
-    (predict-errors ctx pctx subexprs-list repr-hash subexprs-fn))
+    (predict-errors ctx pctx subexprs-list repr-hash subexprs-fn subexprs-log))
   (generate-timelines expr
                       ctx
                       pctx

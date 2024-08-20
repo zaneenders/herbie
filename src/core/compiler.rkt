@@ -60,7 +60,9 @@
   (define instructions
     (for/vector #:length (- (batch-nodes-length batch) num-vars)
                 ([node (in-vector (batch-nodes batch) num-vars)])
+
       (match node
+        [(logfl f x e) (list (const node))]
         [(literal value (app get-representation repr)) (list (const (real->repr value repr)))]
         [(list 'if c t f) (list if-proc c t f)]
         [(list op args ...)
