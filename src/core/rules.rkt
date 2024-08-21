@@ -20,6 +20,7 @@
            register-ruleset!
            *rulesets*
            *unsound-rules*
+           *inversed-rules*
            register-ruleset*!
            (struct-out rule)))
 

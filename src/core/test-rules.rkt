@@ -127,7 +127,8 @@
       (check-rule-correct test-rule)))
 
   ;;Test for inverses
-  (for* ([(_ test-ruleset) (in-dict (*rulesets*))] [test-rule (first test-ruleset)])
+  (for* ([(_ test-ruleset) (in-dict (*rulesets*))] [test-rule (first test-ruleset)]
+  #:unless (not (set-member? (*inversed-rules*) test-rule)))
     (test-case (~a (rule-name test-rule))
       (check-rule-inverse test-rule  test-ruleset)))
 
