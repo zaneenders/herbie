@@ -93,6 +93,14 @@
             (for ([rule (in-list rules)])
               (sow rule))))))
 
+(define (*inversed-rules*)
+  (reap [sow]
+        (for ([(_ ruleset) (in-dict (*rulesets*))])
+          (match-define (list rules groups _) ruleset)
+          (when (and (ormap (curry flag-set? 'rules) groups) (not (set-member? groups 'inversed)))
+            (for ([rule (in-list rules)])
+              (sow rule))))))
+
 ;; Spec contains no accelerators
 (define (spec-has-accelerator? spec)
   (match spec
@@ -165,6 +173,7 @@
                  (arithmetic simplify fp-safe sound)
                  #:type ([a real] [b real])
                  [+-commutative (+ a b) (+ b a)]
+                 [+-commutative (+ b a) (+ a b)]
                  [*-commutative (* a b) (* b a)])
 
 ; Associativity
@@ -223,6 +232,7 @@
                  (arithmetic simplify fp-safe sound)
                  #:type ([a real] [b real] [c real])
                  [cancel-sign-sub (- a (* (neg b) c)) (+ a (* b c))]
+                 [cancel-sub-sign  (+ a (* b c)) (- a (* (neg b) c))]
                  [cancel-sign-sub-inv (- a (* b c)) (+ a (* (neg b) c))])
 
 ; Difference of squares
@@ -316,7 +326,8 @@
                  (fractions simplify sound)
                  #:type ([a real] [b real] [c real] [d real])
                  [div-sub (/ (- a b) c) (- (/ a c) (/ b c))]
-                 [times-frac (/ (* a b) (* c d)) (* (/ a c) (/ b d))])
+                 [times-frac (/ (* a b) (* c d)) (* (/ a c) (/ b d))]
+                 [div-add (/ (+ a b) c)  (+ (/ a c) (/ b c))])
 
 (define-ruleset* fractions-transform
                  (fractions sound)
@@ -773,7 +784,7 @@
                  [not-gte (not (>= x y)) (< x y)])
 
 (define-ruleset* branch-reduce
-                 (branches simplify fp-safe sound)
+                 (branches simplify fp-safe sound inversed)
                  #:type ([a bool] [b bool] [x real] [y real])
                  [if-true (if (TRUE) x y) x]
                  [if-false (if (FALSE) x y) y]
