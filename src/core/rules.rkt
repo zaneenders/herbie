@@ -256,6 +256,12 @@
                  [rgt-mult-inverse (* a (/ 1 a)) 1]
                  [lft-mult-inverse (* (/ 1 a) a) 1])
 
+(define-ruleset* fractions-distribute
+                 (fractions simplify sound)
+                 #:type ([a real] [b real])
+                 [sub-to-add  (- a (neg b)) (+ a b)]
+                 [add-to-sub (+ a b) (- a (neg b))])
+
 (define-ruleset* id-reduce-fp-safe-nan
                  (arithmetic simplify fp-safe-nan sound)
                  #:type ([a real])
