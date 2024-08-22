@@ -174,7 +174,6 @@
                  (arithmetic simplify fp-safe sound)
                  #:type ([a real] [b real])
                  [+-commutative (+ a b) (+ b a)]
-                 [+-commutative (+ b a) (+ a b)]
                  [*-commutative (* a b) (* b a)])
 
 ; Associativity
