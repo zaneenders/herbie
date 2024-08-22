@@ -1194,6 +1194,24 @@
   (match cmd
     [`(single . ,extractor) ; single expression extraction
      (define regraph (make-regraph egg-graph))
+     (define nodenumber 0)
+     (displayln "%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+     (define eclasses (regraph-eclasses regraph))
+      (define n (vector-length eclasses))
+      (for ([id (in-range n)])
+                 (displayln "___________________")
+
+            (define eclass (vector-ref eclasses id))
+            (for ([enode eclass]) 
+            (display nodenumber)
+            (display ": ")
+            (displayln enode)
+            (set! nodenumber (+ nodenumber 1))
+                             ;(displayln "___________________")
+                             )
+)
+
+     (displayln "%%%%%%%%%%%%%%%%%%%%%%%%%%%%")     
      (define extract-id (extractor regraph))
      (define reprs (egg-runner-reprs runner))
      (for/list ([id (in-list root-ids)]
