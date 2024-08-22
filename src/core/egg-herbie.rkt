@@ -1194,29 +1194,18 @@
   (match cmd
     [`(single . ,extractor) ; single expression extraction
      (define regraph (make-regraph egg-graph))
-     (define nodenumber 0)
-     (displayln "%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-     (define eclasses (regraph-eclasses regraph))
-      (define n (vector-length eclasses))
-      (for ([id (in-range n)])
-                 (displayln "___________________")
-
-            (define eclass (vector-ref eclasses id))
-            (for ([enode eclass]) 
-            (display nodenumber)
-            (display ": ")
-            (displayln enode)
-            (set! nodenumber (+ nodenumber 1))
-                             ;(displayln "___________________")
-                             )
-)
-
-     (displayln "%%%%%%%%%%%%%%%%%%%%%%%%%%%%")     
+     
+     (displayln "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
      (define extract-id (extractor regraph))
      (define reprs (egg-runner-reprs runner))
      (for/list ([id (in-list root-ids)]
                 [repr (in-list reprs)])
-       (regraph-extract-best regraph extract-id id repr))]
+                (define eclass (regraph-extract-variants regraph extract-id id repr))
+                (for([expr eclass])
+                    (displayln expr))
+                (regraph-extract-best regraph extract-id id repr)
+       )
+       ]
     [`(multi . ,extractor) ; multi expression extraction
      (define regraph (make-regraph egg-graph))
      (define extract-id (extractor regraph))
