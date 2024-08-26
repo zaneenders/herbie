@@ -120,6 +120,7 @@
     ['logtan #true]
     ['logsqrt #true]
     ['logcbrt #true]
+    ['log-neg #true]
     [_ #false]))
 
 (define (logop symbol)
@@ -136,6 +137,7 @@
     ['logtan logtan]
     ['logsqrt logsqrt]
     ['logcbrt logcbrt]
+    ['log-neg log-neg]
     [_ (error 'logop symbol)]))
 
 (define (op->logop op)
@@ -152,6 +154,20 @@
     ['tan.f64 'logtan]
     ['sqrt.f64 'logsqrt]
     ['cbrt.f64 'logcbrt]
+    ['neg.f64 'log-neg]
+    ['+.f32 'log+]
+    ['-.f32 'log-]
+    ['*.f32 'log*]
+    ['/.f32 'log/]
+    ['log.f32 'logln]
+    ['exp.f32 'logexp]
+    ['pow.f32 'logexpt]
+    ['sin.f32 'logsin]
+    ['cos.f32 'logcos]
+    ['tan.f32 'logtan]
+    ['sqrt.f32 'logsqrt]
+    ['cbrt.f32 'logcbrt]
+    ['neg.f32 'log-neg]
     [_ (error 'op->logop op)]))
 
 (define (expr->logfl expr)
