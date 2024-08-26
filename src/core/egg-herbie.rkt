@@ -1196,15 +1196,22 @@
      (define regraph (make-regraph egg-graph))
      
      (displayln "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+     (define exprs '())
+     (define values (make-hasheq))
      (define extract-id (extractor regraph))
      (define reprs (egg-runner-reprs runner))
-     (for/list ([id (in-list root-ids)]
+     (define l (for/list ([id (in-list root-ids)]
                 [repr (in-list reprs)])
                 (define eclass (regraph-extract-variants regraph extract-id id repr))
-                (for([expr eclass])
-                    (displayln expr))
+                (cons exprs (first eclass))
                 (regraph-extract-best regraph extract-id id repr)
-       )
+       ))
+      (for ([expr exprs])
+            (define output (real-apply (make-real-compiler  ctx) pt))
+            (if (hash-has-key? values (cdr ouput))
+                (displayln "found double")
+                (hash-set! (cdr output) (car output))))
+      l
        ]
     [`(multi . ,extractor) ; multi expression extraction
      (define regraph (make-regraph egg-graph))
