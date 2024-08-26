@@ -2,21 +2,23 @@
 
 (require racket/set
          math/bigfloat
-         racket/hash)
+         racket/hash
+         math/flonum
+         math/base)
 (require "localize.rkt"
          "points.rkt"
          "programs.rkt"
          "sampling.rkt"
          "compiler.rkt"
          "logspace.rkt"
-         "../config.rkt"
          "../syntax/sugar.rkt"
          "../syntax/types.rkt"
          "../utils/common.rkt"
          "../utils/alternative.rkt"
          "../utils/float.rkt")
 
-(provide explain actual-errors)
+(provide explain
+         actual-errors)
 
 (define *top-3* (make-parameter #f))
 
@@ -57,6 +59,9 @@
 
 (define (same-sign? a b)
   (or (and (bfpositive? a) (bfpositive? b)) (and (bfnegative? a) (bfnegative? b))))
+
+(define (same-sign?* a b)
+  (or (and (positive? a) (positive? b) (and (negative? a) (negative? b)))))
 
 (define all-explanations (list 'uflow-rescue 'u/u 'u/n 'o/o 'n/o 'o*u 'u*o 'n*u 'cancellation))
 (define cond-thres (bf 100))
@@ -115,13 +120,14 @@
       ((representation-repr->bf (hash-ref repr-hash subexpr)) exacts-val))
 
     (define logfls (apply subexprs-log (map flonum->logfl pt)))
-    (define logfls-hash
-      (make-immutable-hash (map cons subexprs-list (vector->list logfls))))
+    (define logfls-hash (make-immutable-hash (map cons subexprs-list (vector->list logfls))))
     (define (logfls-ref subexpr)
       (hash-ref logfls-hash subexpr))
 
     (for/list ([subexpr (in-list subexprs-list)])
       (define subexpr-val (exacts-ref subexpr))
+      (define slog (logfls-ref subexpr))
+      (match-define (logfl sfl ss se) slog)
 
       (define (update-flow-hash flow-hash pred? . children)
         (define child-set
@@ -151,14 +157,16 @@
       (match subexpr
         [(list (or '+.f64 '+.f32) x-ex y-ex)
          #:when (or (list? x-ex) (list? y-ex))
-         (define x (exacts-ref x-ex))
-         (define y (exacts-ref y-ex))
-         (define x+y (bigfloat->flonum (bf+ x y)))
-         (define cond-x (bfabs (bf/ x subexpr-val)))
-         (define cond-y (bfabs (bf/ y subexpr-val)))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define ylog (logfls-ref y-ex))
+         (match-define (logfl yfl ys ye) ylog)
 
-         (define x.eps (+ 127 (bigfloat-exponent x)))
-         (define y.eps (+ 127 (bigfloat-exponent y)))
+         (define cond-x (abs (/ xfl sfl)))
+         (define cond-y (abs (/ yfl sfl)))
+
+         (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
+         (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
 
          (cond
            [(> (- x.eps y.eps) 100) (silence y-ex)]
@@ -169,41 +177,39 @@
            ; Both R(x + y) and R(x) + R(y) underflow
            ; This causes the condition number to jump up,
            ; with no real error
-           [(and (= x+y 0.0) (bfzero? subexpr-val)) #f]
+           [(underflow? xlog) #f]
 
            ; nan rescue:
            ; R(+-inf) + R(-+inf) = nan, but should actually
            ; be inf
-           [(and (bfinfinite? x) (bfinfinite? y) (not (same-sign? x y)) (not (bfnan? subexpr-val)))
+           [(and (overflow? xlog) (overflow? ylog) (not (same-sign?* xfl yfl)))
             (mark-erroneous! subexpr 'nan-rescue)]
 
            ; inf rescue:
            ; R(inf) + y = non inf value (inf rescue)
-           [(and (bfinfinite? x) (not (bfinfinite? subexpr-val)))
-            (mark-erroneous! subexpr 'oflow-left)]
-           [(and (bfinfinite? y) (not (bfinfinite? subexpr-val)))
-            (mark-erroneous! subexpr 'oflow-right)]
+           [(and (overflow? xlog) (<= (abs se) MAX-EXP)) (mark-erroneous! subexpr 'oflow-left)]
+           [(and (overflow? ylog) (<= (abs se) MAX-EXP)) (mark-erroneous! subexpr 'oflow-right)]
 
            ; High condition number:
            ; CN(+, x, y) = |x / x + y|
-           [(or (bf> cond-x cond-thres) (bf> cond-y cond-thres))
-            (mark-erroneous! subexpr 'cancellation)]
+           [(or (> cond-x 100) (> cond-y 100)) (mark-erroneous! subexpr 'cancellation)]
 
            ; Maybe
-           [(or (bf> cond-x maybe-cond-thres) (bf> cond-y maybe-cond-thres))
-            (mark-maybe! subexpr 'cancellation)]
+           [(or (> cond-x 32) (> cond-y 32)) (mark-maybe! subexpr 'cancellation)]
            [else #f])]
 
         [(list (or '-.f64 '-.f32) x-ex y-ex)
          #:when (or (list? x-ex) (list? y-ex))
-         (define x (exacts-ref x-ex))
-         (define y (exacts-ref y-ex))
-         (define x-y (bigfloat->flonum (bf- x y)))
-         (define cond-x (bfabs (bf/ x subexpr-val)))
-         (define cond-y (bfabs (bf/ y subexpr-val)))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define ylog (logfls-ref y-ex))
+         (match-define (logfl yfl ys ye) ylog)
 
-         (define x.eps (+ 127 (bigfloat-exponent x)))
-         (define y.eps (+ 127 (bigfloat-exponent y)))
+         (define cond-x (abs (/ xfl sfl)))
+         (define cond-y (abs (/ yfl sfl)))
+
+         (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
+         (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
 
          (cond
            [(> (- x.eps y.eps) 100) (silence y-ex)]
@@ -213,100 +219,122 @@
            ; Condition number hallucination:
            ; When x - y correctly underflows, CN is high
            ; even though the answer is correct
-           [(and (= x-y 0.0) (bfzero? subexpr-val)) #f]
+           [(underflow? slog) #f]
 
            ; nan rescue:
            ; inf - inf = nan but should actually get an inf
-           [(and (bfinfinite? x) (bfinfinite? y) (same-sign? x y) (not (bfnan? subexpr-val)))
+           [(and (overflow? xlog) (overflow? ylog) (same-sign?* xfl yfl))
             (mark-erroneous! subexpr 'nan-rescue)]
 
            ; inf rescue
            ; If x or y overflow and the other arg rescues
            ; it
-           [(and (bfinfinite? x) (not (bfinfinite? subexpr-val)))
-            (mark-erroneous! subexpr 'oflow-left)]
-           [(and (bfinfinite? y) (not (bfinfinite? subexpr-val)))
-            (mark-erroneous! subexpr 'oflow-right)]
+           [(and (overflow? xlog) (<= (abs se) MAX-EXP)) (mark-erroneous! subexpr 'oflow-left)]
+           [(and (overflow? ylog) (<= (abs se) MAX-EXP)) (mark-erroneous! subexpr 'oflow-right)]
 
            ; High condition number:
            ; CN(+, x, y) = |x / x - y|
-           [(or (bf> cond-x cond-thres) (bf> cond-y cond-thres))
-            (mark-erroneous! subexpr 'cancellation)]
+           [(or (> cond-x 100) (> cond-y 100)) (mark-erroneous! subexpr 'cancellation)]
 
            ; Maybe
-           [(or (bf> cond-x maybe-cond-thres) (bf> cond-y maybe-cond-thres))
-            (mark-maybe! subexpr 'cancellation)]
+           [(or (> cond-x 32) (> cond-y 32)) (mark-maybe! subexpr 'cancellation)]
            [else #f])]
 
         [(list (or 'sin.f64 'sin.f32) x-ex)
          #:when (list? x-ex)
-         (define x (exacts-ref x-ex))
-         (define cot-x (bfabs (bfcot x)))
-         (define cond-no (bf* (bfabs x) cot-x))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define cot-x (abs (/ 1.0 (tan xfl))))
+         (define cond-no (* (abs xfl) cot-x))
          (cond
-           [(and (bfinfinite? x) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'oflow-rescue)]
-           [(and (bf> cond-no cond-thres) (bf> (bfabs x) cond-thres))
-            (mark-erroneous! subexpr 'sensitivity)]
-           [(and (bf> cond-no cond-thres) (bf> cot-x cond-thres))
-            (mark-erroneous! subexpr 'cancellation)]
+           [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
 
-           [(and (bf> cond-no maybe-cond-thres) (bf> (bfabs x) maybe-cond-thres))
-            (mark-maybe! subexpr 'sensitivity)]
-           [(and (bf> cond-no maybe-cond-thres) (bf> cot-x maybe-cond-thres))
-            (mark-maybe! subexpr 'cancellation)]
+           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-erroneous! subexpr 'sensitivity)]
+
+           [(and (> cond-no 100) (> cot-x 100)) (mark-erroneous! subexpr 'cancelation)]
+
+           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-maybe! subexpr 'sensitivity)]
+
+           [(and (> cond-no 32) (> cot-x 32)) (mark-maybe! subexpr 'cancellation)]
+
            [else #f])]
 
         [(list (or 'cos.f64 'cos.f32) x-ex)
          #:when (list? x-ex)
-         (define x (exacts-ref x-ex))
-         (define cond-no (bfabs (bf* x (bftan x))))
-
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define tan-x (abs (tan xfl)))
+         (define cond-no (* (abs xfl) tan-x))
          (cond
-           [(and (bfinfinite? x) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'oflow-rescue)]
-           [(bf> cond-no cond-thres) (mark-erroneous! subexpr 'sensitivity)]
-           [(bf> cond-no maybe-cond-thres) (mark-maybe! subexpr 'sensitivity)]
+           ;[(and (bfinfinite? x) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'oflow-rescue)]
+           [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
+
+           ; [(and (bf> cond-no cond-thres) (bf> (bfabs x) cond-thres))
+           ;  (mark-erroneous! subexpr 'sensitivity)]
+           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-erroneous! subexpr 'sensitivity)]
+
+           ; [(and (bf> cond-no cond-thres) (bf> cot-x cond-thres))
+           ;  (mark-erroneous! subexpr 'cancellation)]
+           [(and (> cond-no 100) (> tan-x 100)) (mark-erroneous! subexpr 'cancelation)]
+
+           ; [(and (bf> cond-no cond-thres) (bf> (bfabs x) cond-thres))
+           ;  (mark-erroneous! subexpr 'sensitivity)]
+           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-maybe! subexpr 'sensitivity)]
+
+           ; [(and (bf> cond-no cond-thres) (bf> cot-x cond-thres))
+           ;  (mark-erroneous! subexpr 'cancellation)]
+           [(and (> cond-no 32) (> tan-x 32)) (mark-maybe! subexpr 'cancellation)]
+
            [else #f])]
 
         [(list (or 'tan.f64 'tan.f32) x-ex)
          #:when (list? x-ex)
-         (define x (exacts-ref x-ex))
-         (define tot-x (bfabs (bf+ (bfcot x) (bftan x))))
-         (define cond-no (bf* (bfabs x) tot-x))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define tan-x (tan xfl))
+         (define cot-x (/ 1.0 tan-x))
+         (define cond-hlf (abs (+ tan-x cot-x)))
+         (define cond-no (* (abs xfl) cond-hlf))
 
          (cond
-           [(and (bfinfinite? x) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'oflow-rescue)]
-           [(and (bf> cond-no cond-thres) (bf> (bfabs x) cond-thres))
-            (mark-erroneous! subexpr 'sensitivity)]
-           [(and (bf> cond-no cond-thres) (bf> tot-x cond-thres))
-            (mark-erroneous! subexpr 'cancellation)]
+           [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
+           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-erroneous! subexpr 'sensitivity)]
+           [(and (> cond-no 100) (> cond-hlf 100)) (mark-erroneous! subexpr 'cancellation)]
 
-           [(and (bf> cond-no maybe-cond-thres) (bf> (bfabs x) maybe-cond-thres))
-            (mark-maybe! subexpr 'sensitivity)]
-           [(and (bf> cond-no maybe-cond-thres) (bf> tot-x maybe-cond-thres))
-            (mark-maybe! subexpr 'cancellation)]
+           [(and (> cond-no 32) (> (abs xfl) 32)) (mark-maybe! subexpr 'sensitivity)]
+           [(and (> cond-no 32) (> cond-hlf 32)) (mark-maybe! subexpr 'cancellation)]
            [else #f])]
 
         [(list (or 'sqrt.f64 'sqrt.f32) x-ex)
          #:when (list? x-ex)
-         (define x (exacts-ref x-ex))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
 
          (cond
+           [(and (underflow? xlog) (< (/ (abs xe) 2.0) MAX-EXP))
+            (mark-erroneous! subexpr 'uflow-rescue)]
            ;; Underflow rescue:
-           [(and (bfzero? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'uflow-rescue)]
 
            ;; Overflow rescue:
-           [(and (bfinfinite? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'oflow-rescue)])]
+           [(and (overflow? xlog) (< (/ (abs xe) 2.0) MAX-EXP))
+            (mark-erroneous! subexpr 'oflow-rescue)])]
 
         [(list (or 'cbrt.f64 'cbrt.f32) x-ex)
          #:when (list? x-ex)
          (define x (exacts-ref x-ex))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
 
          (cond
            ;; Underflow rescue:
-           [(and (bfzero? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'uflow-rescue)]
+           ;; [(and (bfzero? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'uflow-rescue)]
+           [(and (underflow? xlog) (< (/ (abs xe) 2.0) MAX-EXP))
+            (mark-erroneous! subexpr 'uflow-rescue)]
 
            ;; Overflow rescue:
-           [(and (bfinfinite? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'oflow-rescue)])]
+           ;;[(and (bfinfinite? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'oflow-rescue)])]
+           [(and (overflow? xlog) (< (/ (abs xe) 2.0) MAX-EXP))
+            (mark-erroneous! subexpr 'oflow-rescue)])]
 
         [(list (or '/.f64 '/.f32) x-ex y-ex)
          #:when (or (list? x-ex) (list? y-ex))
@@ -318,64 +346,60 @@
          (match-define (logfl yfl ys ye) ylog)
 
          (cond
-           [(and (zero? xfl) (<= (abs (- xe ye)) MAX-EXP)) (mark-erroneous! subexpr 'u/n)]
+           ;; if the numerator underflows and the denominator:
+           ;; - underflows, nan could be rescued
+           [(and (underflow? xlog) (underflow? ylog)) (mark-erroneous! subexpr 'u/u)]
+           ;; - is small enough, 0 underflow could be rescued
+           [(and (underflow? xlog) (<= (abs (- xe ye)) MAX-EXP)) (mark-erroneous! subexpr 'u/n)]
+           ;; - overflows, no rescue is possible
+
+           ;; if the numerator overflows and the denominator:
+           ;; - overflows, nan could be rescued
+           [(and (overflow? xlog) (overflow? ylog)) (mark-erroneous! subexpr 'o/o)]
+           ;; - is large enough, inf overflow can be rescued
+           [(and (overflow? xlog) (<= (abs (- xe ye)) MAX-EXP)) (mark-erroneous! subexpr 'o/n)]
+           ;; - underflow, no rescue is possible
+
+           ;; if the numerator is normal and the denominator:
+           ;; - overflows, then a rescue is possible
+           ; [(and (bfinfinite? y) (not (bfzero? subexpr-val))) (mark-erroneous! subexpr 'n/o)]
+           [(and (overflow? ylog) (<= (abs (- xe ye)) MAX-EXP)) (mark-erroneous! subexpr 'n/o)]
+           ;; - underflows, then a rescue is possible
+           ;; [(and (bfzero? y) (not (bfinfinite? subexpr-val))) (mark-erroneous! subexpr 'n/u)]
+           [(and (underflow? ylog) (<= (abs (- xe ye)) MAX-EXP)) (mark-erroneous! subexpr 'n/u)]
+           ;; - is normal, then no rescue is possible
            [else #f])]
-
-         ; (cond
-         ;   ;; if the numerator underflows and the denominator:
-         ;   ;; - underflows, nan could be rescued
-         ;   [(and (bfzero? x) (bfzero? y) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'u/u)]
-         ;   ;; - is small enough, 0 underflow could be rescued
-         ;   [(and (bfzero? x) (not (bfzero? subexpr-val))) (mark-erroneous! subexpr 'u/n)]
-         ;   ;; - overflows, no rescue is possible
-
-         ;   ;; if the numerator overflows and the denominator:
-         ;   ;; - overflows, nan could be rescued
-         ;   [(and (bfinfinite? x) (bfinfinite? y) (not (bfnan? subexpr-val)))
-         ;    (mark-erroneous! subexpr 'o/o)]
-         ;   ;; - is large enough, inf overflow can be rescued
-         ;   [(and (bfinfinite? x) (not (bfinfinite? subexpr-val))) (mark-erroneous! subexpr 'o/n)]
-         ;   ;; - underflow, no rescue is possible
-
-         ;   ;; if the numerator is normal and the denominator:
-         ;   ;; - overflows, then a rescue is possible
-         ;   [(and (bfinfinite? y) (not (bfzero? subexpr-val))) (mark-erroneous! subexpr 'n/o)]
-         ;   ;; - underflows, then a rescue is possible
-         ;   [(and (bfzero? y) (not (bfinfinite? subexpr-val))) (mark-erroneous! subexpr 'n/u)]
-         ;   ;; - is normal, then no rescue is possible
-         ;   [else #f])]
 
         [(list (or '*.f64 '*.f32) x-ex y-ex)
          #:when (or (list? x-ex) [list? y-ex])
          (define x (exacts-ref x-ex))
          (define y (exacts-ref y-ex))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define ylog (logfls-ref y-ex))
+         (match-define (logfl yfl ys ye) ylog)
 
          (cond
            ;; if one operand underflows and the other overflows, then nan must
            ;; be rescued.
-           [(and (bfinfinite? x) (bfzero? y) (not (bfnan? subexpr-val)))
-            (mark-erroneous! subexpr 'o*u)]
-           [(and (bfzero? x) (bfinfinite? y) (not (bfnan? subexpr-val)))
-            (mark-erroneous! subexpr 'u*o)]
+           [(and (overflow? xlog) (underflow? ylog)) (mark-erroneous! subexpr 'o*u)]
+           [(and (underflow? xlog) (overflow? ylog)) (mark-erroneous! subexpr 'o*u)]
 
            ;; If one operand is normal and the other overflows then, inf rescue
            ;; could occur
-           [(and (or (bfinfinite? x) (bfinfinite? y)) (not (bfinfinite? subexpr-val)))
+           [(and (or (overflow? xlog) (overflow? ylog)) (<= (abs (+ xe ye)) MAX-EXP))
             (mark-erroneous! subexpr 'n*o)]
-
-           [(and (or (bfzero? x) (bfzero? y)) (not (bfzero? subexpr-val)))
+           [(and (or (underflow? xlog) (underflow? ylog)) (<= (abs (+ xe ye)) MAX-EXP))
             (mark-erroneous! subexpr 'n*u)]
-
            ;; If both normal then no error
            [else #f])]
 
         [(list (or 'log.f64 'log.f32) x-ex)
          #:when (list? x-ex)
          (define x (exacts-ref x-ex))
-         (define cond-num (bfabs (bf/ 1.bf subexpr-val)))
          (define xlog (logfls-ref x-ex))
          (match-define (logfl xfl xs xe) xlog)
-         (eprintf "~a" xlog)
+         (define cond-num (abs (/ 1.0 xfl)))
 
          (cond
            ; Condition number hallucination:
@@ -384,44 +408,39 @@
            ; [(and (bf= x 1.bf) (bfzero? subexpr-val)) #f]
 
            ; overflow rescue:
-           [(and (infinite? x) (not (infinite? xe)))
-             (eprintf " yes\n")
-             (mark-erroneous! subexpr 'oflow-rescue)]
+           [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
 
            ; underflow rescue:
-           [(bfzero? x)
-             (eprintf " yes\n")
-             (mark-erroneous! subexpr 'uflow-rescue)]
+           [(underflow? xlog) (mark-erroneous! subexpr 'uflow-rescue)]
 
            ; High Condition Number:
            ; CN(log, x) = |1 / log(x)|
-           [(bf> cond-num cond-thres) (eprintf " no\n") (mark-erroneous! subexpr 'sensitivity)]
+           [(> cond-num 100) (mark-erroneous! subexpr 'sensitivity)]
+           [(> cond-num 32) (mark-maybe! subexpr 'sensitivity)]
 
-           [(bf> cond-num maybe-cond-thres) (eprintf " no\n") (mark-maybe! subexpr 'sensitivity)]
-
-           [else (eprintf " no\n") #f])]
+           [else #f])]
 
         [(list (or 'exp.f64 'exp.f32) x-ex)
          #:when (list? x-ex)
          (define x (exacts-ref x-ex))
          (define exp-x (bigfloat->flonum (bfexp x)))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
 
          (cond
            ; Condition Number Hallucination:
            ; When x is large enough that exp(x) overflows,
            ; condition number is also high.
-           [(and (infinite? exp-x) (bfinfinite? subexpr-val)) #f]
-
            ; Condition Number Hallucination:
            ; When x is large enough (negative) that exp(x)
            ; underflows, condition number is also high
-           [(and (zero? exp-x) (bfzero? subexpr-val)) #f]
+           [(and (> (abs (* xfl (fllog2 euler.0))) MAX-EXP)) #f]
 
            ; High Condition Number:
            ; CN(exp, x) = |x|
-           [(bf> (bfabs x) cond-thres) (mark-erroneous! subexpr 'sensitivity)]
+           [(> (abs xfl) 100) (mark-erroneous! subexpr 'sensitivity)]
 
-           [(bf> (bfabs x) maybe-cond-thres) (mark-maybe! subexpr 'sensitivity)]
+           [(> (abs xfl) 32) (mark-maybe! subexpr 'sensitivity)]
 
            [else #f])]
 
@@ -431,8 +450,12 @@
          (define x (exacts-ref x-ex))
          (define y (exacts-ref y-ex))
          (define x^y (bigfloat->flonum (bfexpt x y)))
-         (define cond-x (bfabs y))
-         (define cond-y (bfabs (bf* y (bflog x))))
+         (define xlog (logfls-ref x-ex))
+         (match-define (logfl xfl xs xe) xlog)
+         (define ylog (logfls-ref y-ex))
+         (match-define (logfl yfl ys ye) ylog)
+         (define cond-x (abs yfl))
+         (define cond-y (abs (* yfl (log xfl))))
 
          (cond
            ;; Hallucination:
@@ -449,73 +472,39 @@
 
            ;; Hallucination:
            ;; y is large but x is zero
-           [(and (bfzero? x) (bfzero? subexpr-val)) #f]
+           ; [(and (bfzero? x) (bfzero? subexpr-val)) #f]
+           [(exact-zero? xlog) #f]
 
            ;; Hallucination:
            ;; if x is large enough that x^y overflows, the condition number also
            ;; is very large, but the answer correctly overflows
-           [(and (bf> y 1.bf) (infinite? x^y) (bfinfinite? subexpr-val)) #f]
+           [(and (> yfl 1.0) (overflow? slog)) #f]
+
+           ;[(and (bf< y -1.bf) (zero? x^y) (bfzero? subexpr-val)) #f]
+           [(and (< yfl -1.0) (overflow? slog)) #f]
 
            ;; if x is small enough and y is large enough that x^y underflows,
            ;; the condition number also gets very large, but the answer
            ;; correctly underflows
-           [(and (bf> y 1.bf) (zero? x^y) (bfzero? subexpr-val)) #f]
+           ;[(and (bf> y 1.bf) (zero? x^y) (bfzero? subexpr-val)) #f]
+           [(and (> yfl 1.0) (underflow? slog)) #f]
 
-           [(and (bf< y -1.bf) (zero? x^y) (bfzero? subexpr-val)) #f]
+           ;[(and (bf< y -1.bf) (infinite? x^y) (bfinfinite? subexpr-val)) #f]
+           [(and (< yfl -1.0) (underflow? slog)) #f]
 
-           [(and (bf< y -1.bf) (infinite? x^y) (bfinfinite? subexpr-val)) #f]
+           [(and (underflow? x) (<= se MAX-EXP)) (mark-erroneous! subexpr 'uflow-rescue)]
 
-           [(and (bfzero? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'uflow-rescue)]
+           [(and (overflow? x) (<= se MAX-EXP)) (mark-erroneous! subexpr 'oflow-rescue)]
 
-           [(and (bfinfinite? x) (not (bf= subexpr-val x))) (mark-erroneous! subexpr 'oflow-rescue)]
-
-           [(and (or (bf> cond-x cond-thres) (bf> cond-y cond-thres)) (not (constant? y-ex)))
+           [(and (or (> cond-x 100) (> cond-y 100)) (not (constant? y-ex)))
             (mark-erroneous! subexpr 'sensitivity)]
 
-           [(and (or (bf> cond-x maybe-cond-thres) (bf> cond-y maybe-cond-thres))
-                 (not (constant? y-ex)))
+           [(and (or (> cond-x 32) (> cond-y 32)) (not (constant? y-ex)))
             (mark-maybe! subexpr 'sensitivity)]
 
            [else #f])]
 
-        [(list (or 'acos.f64 'acos.f32) x-ex)
-         #:when (list? x-ex)
-         (define x (exacts-ref x-ex))
-         (define cond-x (bfabs (bf/ x (bf* (bfsqrt (bf- 1.bf (bf* x x))) subexpr-val))))
-
-         (cond
-           ; Condition number hallucinations:
-           ; acos(1) == 0
-           ;; [(and (bf= x 1.bf) (bfzero? subexpr-val)) #f]
-
-           ; acos(-1) == pi
-           ;; [(bf= x -1.bf)  #f]
-
-           ; High Condition Number:
-           ; CN(acos, x) = |x / (√(1 - x^2)acos(x))|
-           [(bf> cond-x cond-thres) (mark-erroneous! subexpr 'sensitivity)]
-
-           [(bf> cond-x maybe-cond-thres) (mark-maybe! subexpr 'sensitivity)]
-
-           [else #f])]
-
-        [(list (or 'asin.f64 'asin.f32) x-ex)
-         #:when (list? x-ex)
-         (define x (exacts-ref x-ex))
-         (define cond-x (bfabs (bf/ x (bf* (bfsqrt (bf- 1.bf (bf* x x))) subexpr-val))))
-
-         (cond
-           ; Condition Number hallucinations:
-           ; asin(1) == pi/2
-           ;; [(bf= (bfabs x) 1.bf) #f]
-           ;; [(and (bfzero? x) (bfzero? subexpr-val)) #f]
-           ; High Condition Number:
-           ; CN(acos, x) = |x / (√(1 - x^2)asin(x))|
-           [(bf> cond-x cond-thres) (mark-erroneous! subexpr 'sensitivity)]
-
-           [(bf> cond-x maybe-cond-thres) (mark-maybe! subexpr 'sensitivity)]
-
-           [else #f])]
+        ;; TODO support inv trig functions
         [_ #f])))
   (values error-count-hash expls->points maybe-expls->points oflow-hash uflow-hash))
 

@@ -26,6 +26,18 @@
 (define (flonum->logfl n_f)
   (logfl n_f (>= n_f 0.0) (fllog2 (abs n_f))))
 
+(define (overflow? xl)
+  (match-define (logfl x s e) xl)
+  (and (infinite? x) (not (infinite? e))))
+
+(define (underflow? xl)
+  (match-define (logfl x s e) xl)
+  (and (zero? x) (not (infinite? e))))
+
+(define (exact-zero? xl)
+  (match-define (logfl x s e) xl)
+  (and (zero? x) (infinite? e)))
+
 (define (log-neg A)
   (match-define (logfl a sa ea) A)
   (logfl (- a) (not sa) ea))
@@ -45,7 +57,7 @@
 (define (log- A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (logfl (+ a b) sa (+ ea (fllog2 (abs (- 1 (flexp2 (- eb ea))))))))
+  (logfl (- a b) sa (+ ea (fllog2 (abs (- 1 (flexp2 (- eb ea))))))))
 
 ; Given 2 log-float numbers a_l = (s_a, e_a) and b_l = (s_b, e_b),
 ; let c_l = a_l */ b_l
@@ -76,15 +88,15 @@
 
 (define (logsin A)
   (match-define (logfl a sa ea) A)
-  (logfl (sin a) (>= (sin a) 0.0) (fllog2 (sin a))))
+  (logfl (sin a) (>= (sin a) 0.0) (fllog2 (abs (sin a)))))
 
 (define (logcos A)
   (match-define (logfl a sa ea) A)
-  (logfl (cos a) (>= (cos a) 0.0) (fllog2 (cos a))))
+  (logfl (cos a) (>= (cos a) 0.0) (fllog2 (abs (cos a)))))
 
 (define (logtan A)
   (match-define (logfl a sa ea) A)
-  (logfl (tan a) (>= (tan a) 0.0) (fllog2 (tan a))))
+  (logfl (tan a) (>= (tan a) 0.0) (fllog2 (abs (tan a)))))
 
 (define (logsqrt A)
   (match-define (logfl a sa ea) A)
