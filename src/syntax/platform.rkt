@@ -3,8 +3,6 @@
 (require "../utils/common.rkt"
          "../utils/errors.rkt"
          "../core/programs.rkt"
-         "../core/rules.rkt"
-         "matcher.rkt"
          "syntax.rkt"
          "types.rkt")
 
@@ -12,9 +10,6 @@
          get-platform
          *active-platform*
          activate-platform!
-         platform-lifting-rules
-         platform-lowering-rules
-         platform-impl-rules
          ;; Platform API
          ;; Operator sets
          (contract-out ;; Platforms
@@ -417,133 +412,3 @@
          (define cost-proc (node-cost-proc expr repr))
          (define itypes (impl-info impl 'itype))
          (apply cost-proc (map loop args itypes))]))))
-
-;; Rules from impl to spec (fixed for a particular platform)
-(define/reset *lifting-rules* (make-hash))
-
-;; Rules from spec to impl (fixed for a particular platform)
-(define/reset *lowering-rules* (make-hash))
-
-;; Synthesizes the LHS and RHS of lifting/lowering rules.
-(define (impl->rule-parts impl)
-  (define vars (impl-info impl 'vars))
-  (define spec (impl-info impl 'spec))
-  (values vars spec (cons impl vars)))
-
-;; Synthesizes lifting rules for a given platform.
-(define (platform-lifting-rules [pform (*active-platform*)])
-  ;; every impl maps to a spec
-  (define impls (platform-impls pform))
-  (define impl-rules
-    (for/list ([impl (in-list impls)])
-      (hash-ref! (*lifting-rules*)
-                 (cons impl pform)
-                 (lambda ()
-                   (define name (sym-append 'lift- impl))
-                   (define itypes (impl-info impl 'itype))
-                   (define otype (impl-info impl 'otype))
-                   (define-values (vars spec-expr impl-expr) (impl->rule-parts impl))
-                   (rule name impl-expr spec-expr (map cons vars itypes) otype)))))
-  ;; special rule for approx nodes
-  ; (define approx-rule (rule 'lift-approx (approx 'a 'b) 'a '((a . real) (b . real)) 'real))
-  ; (cons approx-rule impl-rules))
-  impl-rules)
-
-;; Synthesizes lowering rules for a given platform.
-(define (platform-lowering-rules [pform (*active-platform*)])
-  (define impls (platform-impls pform))
-  (for/list ([impl (in-list impls)])
-    (hash-ref! (*lowering-rules*)
-               (cons impl pform)
-               (lambda ()
-                 (define name (sym-append 'lower- impl))
-                 (define-values (vars spec-expr impl-expr) (impl->rule-parts impl))
-                 (define itypes (map representation-type (impl-info impl 'itype)))
-                 (define otype (representation-type (impl-info impl 'otype)))
-                 (rule name spec-expr impl-expr (map cons vars itypes) otype)))))
-
-;; All possible assignments of implementations.
-(define (impl-combinations ops impls)
-  (reap [sow]
-        (let loop ([ops ops]
-                   [assigns '()])
-          (match ops
-            [(? null?) (sow assigns)]
-            [(list 'if rest ...) (loop rest assigns)]
-            [(list (? (curryr assq assigns)) rest ...) (loop rest assigns)]
-            [(list op rest ...)
-             (for ([impl (in-set impls)])
-               (define pattern (cons op (map (lambda _ (gensym)) (operator-info op 'itype))))
-               (when (pattern-match (impl-info impl 'spec) pattern)
-                 (loop rest (cons (cons op impl) assigns))))]))))
-
-;; Attempts to lower a specification to an expression using
-;; a precomputed assignment of operator implementations.
-;; Fails if the result is not well-typed.
-(define (try-lower expr repr op->impl)
-  (let/ec k
-          (define env '())
-          (define expr*
-            (let loop ([expr expr]
-                       [repr repr])
-              (match expr
-                [(? symbol? x) ; variable
-                 (match (dict-ref env x #f)
-                   [#f (set! env (cons (cons x repr) env))]
-                   [(? (curry equal? repr)) (k #f env)]
-                   [_ (void)])
-                 x]
-                ; number
-                [(? number? n) (literal n (representation-name repr))]
-                [(list 'if cond ift iff) ; if expression
-                 (list 'if (loop cond (get-representation 'bool)) (loop ift repr) (loop iff repr))]
-                [(list op args ...) ; application
-                 (define impl (dict-ref op->impl op))
-                 (unless (equal? (impl-info impl 'otype) repr)
-                   (k #f env))
-                 (cons impl (map loop args (impl-info impl 'itype)))])))
-          (define ctx (context (map car env) repr (map cdr env)))
-          (values (and (equal? (repr-of expr* ctx) repr) expr*) env)))
-
-;; Merges two variable -> value mappings.
-;; If any mapping disagrees, the result is `#f`.
-(define (merge-envs env1 env2)
-  (let/ec k
-          (for/fold ([env env1]) ([(x ty) (in-dict env2)])
-            (match (dict-ref env x #f)
-              [#f (cons (cons x ty) env)]
-              [(? (curry equal? ty)) env]
-              [_ (k #f)]))))
-
-;; Synthesizes impl-to-impl rules for a given platform.
-;; If a rule is over implementations, filters by supported implementations.
-;; If a rule is over real operators, instantiates for every
-;; possible implementation assignment.
-(define (platform-impl-rules rules [pform (*active-platform*)])
-  (define impls (list->seteq (platform-impls pform)))
-  (reap [sow]
-        (for ([ru (in-list rules)])
-          (match-define (rule name input output _ otype) ru)
-          (cond
-            [(representation? otype) ; rule over representation
-             (define ops (append (ops-in-expr input) (ops-in-expr output)))
-             (when (andmap (lambda (op) (or (eq? op 'if) (set-member? impls op))) ops)
-               (sow ru))]
-            [else ; rules over types
-             (define ops (append (ops-in-expr input) (ops-in-expr output)))
-             (define isubsts (impl-combinations ops impls))
-             (for* ([isubst (in-list isubsts)]
-                    [repr (in-list (platform-reprs pform))]
-                    #:when (equal? (representation-type repr) otype))
-               (define-values (input* ienv) (try-lower input repr isubst))
-               (define-values (output* oenv) (try-lower output repr isubst))
-               (when (and input* output*)
-                 (define itypes* (merge-envs ienv oenv))
-                 (when itypes*
-                   (define name*
-                     (string->symbol
-                      (format "~a-~a-~a"
-                              name
-                              (representation-name repr)
-                              (string-join (map (lambda (subst) (~a (cdr subst))) isubst) "-"))))
-                   (sow (rule name* input* output* itypes* repr)))))]))))
