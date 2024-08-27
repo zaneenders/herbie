@@ -7,6 +7,12 @@
 
 (provide (all-defined-out))
 
+(define MAX-EXP 1023)
+(define (representable? e)
+  (and (not (nan? e)) (< (abs e) (MAX-EXP . + . 1))))
+(define (set-sign s num)
+  (if s num (- num)))
+
 (struct logfl (r s e)
   #:methods gen:custom-write
   [(define write-proc
@@ -26,13 +32,17 @@
 (define (flonum->logfl n_f)
   (logfl n_f (>= n_f 0.0) (fllog2 (abs n_f))))
 
+(define (lf-normalize lf)
+  (match-define (logfl x s e) lf)
+  (if (or (nan? x) (zero? x) (infinite? x)) (logfl (set-sign s (flexp2 e)) s e) lf))
+
 (define (overflow? xl)
   (match-define (logfl x s e) xl)
-  (and (infinite? x) (not (infinite? e))))
+  (and (or (infinite? x) (nan? x)) (> (abs e) MAX-EXP)))
 
 (define (underflow? xl)
   (match-define (logfl x s e) xl)
-  (and (zero? x) (not (infinite? e))))
+  (and (zero? x) (> (abs e) MAX-EXP)))
 
 (define (exact-zero? xl)
   (match-define (logfl x s e) xl)
@@ -52,12 +62,16 @@
 (define (log+ A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
+  (define ea_ (max ea eb))
+  (define eb_ (min ea eb))
   (logfl (+ a b) sa (+ ea (fllog2 (abs (+ 1 (flexp2 (- eb ea))))))))
 
 (define (log- A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (logfl (- a b) sa (+ ea (fllog2 (abs (- 1 (flexp2 (- eb ea))))))))
+  (define ea_ (max ea eb))
+  (define eb_ (min ea eb))
+  (logfl (- a b) sa (+ ea_ (fllog2 (abs (- 1 (flexp2 (- eb_ ea_))))))))
 
 ; Given 2 log-float numbers a_l = (s_a, e_a) and b_l = (s_b, e_b),
 ; let c_l = a_l */ b_l
@@ -176,3 +190,5 @@
     [(list 'if c t f) (error 'spec->logfl "if not supported")]
     [(list op args ...) (cons (op->logop op) (map expr->logfl args))]
     [sym sym]))
+
+;#<logfl: +inf.0 #t 550.5604158267413>

@@ -157,13 +157,14 @@
       (match subexpr
         [(list (or '+.f64 '+.f32) x-ex y-ex)
          #:when (or (list? x-ex) (list? y-ex))
-         (define xlog (logfls-ref x-ex))
+
+         (define xlog (lf-normalize (logfls-ref x-ex)))
          (match-define (logfl xfl xs xe) xlog)
-         (define ylog (logfls-ref y-ex))
+         (define ylog (lf-normalize (logfls-ref y-ex)))
          (match-define (logfl yfl ys ye) ylog)
 
-         (define cond-x (abs (/ xfl sfl)))
-         (define cond-y (abs (/ yfl sfl)))
+         (define cond-x (abs (/ xfl (+ xfl yfl))))
+         (define cond-y (abs (/ yfl (+ xfl yfl))))
 
          (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
          (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
@@ -182,8 +183,7 @@
            ; nan rescue:
            ; R(+-inf) + R(-+inf) = nan, but should actually
            ; be inf
-           [(and (overflow? xlog) (overflow? ylog) (not (same-sign?* xfl yfl)))
-            (mark-erroneous! subexpr 'nan-rescue)]
+           [(and (overflow? xlog) (overflow? ylog) (not (same-sign?* xfl yfl))) (mark-erroneous! subexpr 'nan-rescue)]
 
            ; inf rescue:
            ; R(inf) + y = non inf value (inf rescue)
@@ -200,13 +200,13 @@
 
         [(list (or '-.f64 '-.f32) x-ex y-ex)
          #:when (or (list? x-ex) (list? y-ex))
-         (define xlog (logfls-ref x-ex))
+         (define xlog (lf-normalize (logfls-ref x-ex)))
          (match-define (logfl xfl xs xe) xlog)
-         (define ylog (logfls-ref y-ex))
+         (define ylog (lf-normalize (logfls-ref y-ex)))
          (match-define (logfl yfl ys ye) ylog)
 
-         (define cond-x (abs (/ xfl sfl)))
-         (define cond-y (abs (/ yfl sfl)))
+         (define cond-x (abs (/ xfl (- xfl yfl))))
+         (define cond-y (abs (/ yfl (- xfl yfl))))
 
          (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
          (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
