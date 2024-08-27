@@ -1,6 +1,8 @@
 #lang racket
 
 (require rackunit)
+
+
 (require "../utils/common.rkt"
          "../utils/float.rkt"
          "rules.rkt"
@@ -12,6 +14,7 @@
          "compiler.rkt"
          "rival.rkt"
          "sampling.rkt")
+         (require racket/regexp)
 
 (load-herbie-builtins)
 
@@ -75,16 +78,34 @@
                       (λ ()
                         (with-check-info (['lhs v1] ['rhs v2])
                                          (check-eq? (ulp-difference v1 v2 (context-repr ctx)) 1))))))
+(define (var-nums px)
+        (define num-vars 0)
+        (define patterns (list #px"a" #px"b" #px"c" #px"d" #px"x" #px"y"))
+        (for ([pattern patterns])
+        (when (pattern-matches? pattern px)
+        (+ num-vars 1) ))
+        )
 
-(define (check-rule-inverse test-rule ruleset)
+
+(define (check-rule-inverse test-rule rules-hash)
   (match-define (rule name p1 p2 env out) test-rule)
   (define inv #f)
-  
-  (for ([rule-test (first ruleset)])
+  (define rules (hash-values rules-hash))
+
+  (for ([rule-test rules])
     (match-define (rule name* p1* p2* env* out*) rule-test)
-    (when (and (equal? p1 p2*) (equal? p1* p2))
+    (when (not (equal? (var-nums p1) (var-nums p2)))
+    (hash-remove! rules-hash name*)
     (set! inv #t))
-     )
+    (when (and (equal? p1 p2*) (equal? p1* p2)) 
+          (displayln (format "Rule 1: ~a = ~a -> ~a" name p1 p2))
+          (displayln (format "Rule 2: ~a = ~a -> ~a" name* p1* p2*))
+          (hash-remove! rules-hash name*)
+          (hash-remove! rules-hash name)
+          (set! inv #t))      
+          )
+    
+
 
   (when (equal? inv #f)
     (displayln (format "name: ~a " name ))
@@ -121,26 +142,30 @@
 
 
   (define _ (*simplify-rules*)) ; force an update
-
+  (define rules '())
+  (define rule-hash (make-hash))
   (for* ([(_ test-ruleset) (in-dict (*rulesets*))] [test-rule (first test-ruleset)])
-    (test-case (~a (rule-name test-rule))
-      (check-rule-correct test-rule)))
+    (set! rules (append rules (list test-rule)))
+    (define name (rule-name test-rule))
+    (hash-set! rule-hash name test-rule))
+
+  
+  (for ([rule rules])
+    (test-case (~a (rule-name rule))
+      (check-rule-correct rule)))
 
   ;;Test for inverses
-  (for* ([(_ test-ruleset) (in-dict (*rulesets*))] [test-rule (first test-ruleset)]
-  #:unless (not (set-member? (*inversed-rules*) test-rule)))
-    (test-case (~a (rule-name test-rule))
-      (check-rule-inverse test-rule  test-ruleset)))
+  (for ([rule rules])
+    (test-case (~a (rule-name rule))
+      (check-rule-inverse rule rule-hash)))
 
-  (for* ([(_ test-ruleset) (in-dict (*rulesets*))]
-         [test-rule (first test-ruleset)]
-         #:unless (set-member? (*unsound-rules*) test-rule))
-    (test-case (~a (rule-name test-rule))
-      (check-rule-sound test-rule)))
+  (for ([rule rules]
+         #:unless (set-member? (*unsound-rules*) rule))
+    (test-case (~a (rule-name rule))
+      (check-rule-sound rule)))
 
-  (for* ([(_ test-ruleset) (in-dict (*rulesets*))]
-         [test-rule (first test-ruleset)]
-         [test-rule* (rule->impl-rules test-rule)]
-         #:when (set-member? (*fp-safe-simplify-rules*) test-rule))
-    (test-case (~a (rule-name test-rule*))
-      (check-rule-fp-safe test-rule*)))
+  (for* ([rule rules]
+         [rule* (rule->impl-rules rule)]
+         #:when (set-member? (*fp-safe-simplify-rules*) rule))
+    (test-case (~a (rule-name rule*))
+      (check-rule-fp-safe rule*)))

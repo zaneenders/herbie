@@ -20,7 +20,6 @@
            register-ruleset!
            *rulesets*
            *unsound-rules*
-           *inversed-rules*
            register-ruleset*!
            (struct-out rule)))
 
@@ -91,14 +90,6 @@
         (for ([(_ ruleset) (in-dict (*rulesets*))])
           (match-define (list rules groups _) ruleset)
           (when (and (ormap (curry flag-set? 'rules) groups) (not (set-member? groups 'sound)))
-            (for ([rule (in-list rules)])
-              (sow rule))))))
-
-(define (*inversed-rules*)
-  (reap [sow]
-        (for ([(_ ruleset) (in-dict (*rulesets*))])
-          (match-define (list rules groups _) ruleset)
-          (when (and (ormap (curry flag-set? 'rules) groups) (not (set-member? groups 'inversed)))
             (for ([rule (in-list rules)])
               (sow rule))))))
 
@@ -784,7 +775,7 @@
                  [not-gte (not (>= x y)) (< x y)])
 
 (define-ruleset* branch-reduce
-                 (branches simplify fp-safe sound inversed)
+                 (branches simplify fp-safe sound)
                  #:type ([a bool] [b bool] [x real] [y real])
                  [if-true (if (TRUE) x y) x]
                  [if-false (if (FALSE) x y) y]

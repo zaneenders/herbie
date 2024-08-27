@@ -38,7 +38,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; rules ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-ruleset* bool-reduce
-                 (bools simplify fp-safe inversed)
+                 (bools simplify fp-safe )
                  #:type ([a bool] [b bool])
                  [not-true (not (TRUE)) (FALSE)]
                  [not-false (not (FALSE)) (TRUE)]
