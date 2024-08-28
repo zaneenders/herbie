@@ -30,7 +30,8 @@
   (begin
     (define-libm-impl/binary64 name (itype ...) otype) ...))
 
-(define-syntax-rule (define-libm-impls/binary64 [(itype ... otype) (name ...)] ...)
+(define-syntax-rule (define-libm-impls/binary64
+                      [(itype ... otype) (name ...)] ...)
   (begin
     (define-libm-impls/binary64* (itype ... otype) name ...) ...))
 
@@ -59,37 +60,37 @@
   #:fpcore (! :precision binary64 (/ x y))
   #:fl /)
 
-(define-libm-impls/binary64 [(binary64 binary64)
-                             (acos acosh
-                                   asin
-                                   asinh
-                                   atan
-                                   atanh
-                                   cbrt
-                                   ceil
-                                   cos
-                                   cosh
-                                   erf
-                                   exp
-                                   exp2
-                                   fabs
-                                   floor
-                                   lgamma
-                                   log
-                                   log10
-                                   log2
-                                   logb
-                                   rint
-                                   round
-                                   sin
-                                   sinh
-                                   sqrt
-                                   tan
-                                   tanh
-                                   tgamma
-                                   trunc)]
-                            [(binary64 binary64 binary64)
-                             (atan2 copysign fdim fmax fmin fmod pow remainder)])
+(define-libm-impls/binary64
+  [(binary64 binary64)
+   (acos acosh
+         asin
+         asinh
+         atan
+         atanh
+         cbrt
+         ceil
+         cos
+         cosh
+         erf
+         exp
+         exp2
+         fabs
+         floor
+         lgamma
+         log
+         log10
+         log2
+         logb
+         rint
+         round
+         sin
+         sinh
+         sqrt
+         tan
+         tanh
+         tgamma
+         trunc)]
+  [(binary64 binary64 binary64) (atan2 copysign fdim fmax fmin fmod pow remainder)])
 
 (define-libm c_erfc (erfc double double))
 (define-libm c_expm1 (expm1 double double))

@@ -338,6 +338,7 @@
   ; create the implementation
   (operator-impl name ctx spec fpcore* fl-proc*))
 
+;; Synactic form for defining a new operator implementation.
 (define-syntax (define-operator-impl stx)
   (define (oops! why [sub-stx #f])
     (raise-syntax-error 'define-operator-impl why stx sub-stx))
@@ -354,21 +355,26 @@
        (define spec #f)
        (define core #f)
        (define fl-expr #f)
+       (define optional? #f)
        (let loop ([fields fields])
          (syntax-case fields ()
            [()
-            (unless spec
-              (oops! "missing `#:spec` keyword"))
-            (with-syntax ([id id]
-                          [spec spec]
-                          [core core]
-                          [fl-expr fl-expr])
-              #'(define id
-                  (make-operator-impl 'id
-                                      (context '(var ...) orepr (list irepr ...))
-                                      'spec
-                                      #:fl fl-expr
-                                      #:fpcore 'core)))]
+            (begin
+              (unless spec
+                (oops! "missing `#:spec` keyword"))
+              (with-syntax ([id id]
+                            [spec spec]
+                            [core core]
+                            [fl-expr fl-expr]
+                            [optional? optional?])
+                #'(define id
+                    (let ([fl-proc fl-expr])
+                      (and (implies optional? fl-proc)
+                           (make-operator-impl 'id
+                                               (context '(var ...) orepr (list irepr ...))
+                                               'spec
+                                               #:fl fl-proc
+                                               #:fpcore 'core))))))]
            [(#:spec expr rest ...)
             (cond
               [spec (oops! "multiple #:spec clauses" stx)]
@@ -390,6 +396,14 @@
                (set! fl-expr #'expr)
                (loop #'(rest ...))])]
            [(#:fl) (oops! "expected value after keyword `#:fl`" stx)]
+           ; specify #:optional if the value associated with #:fl
+           ; may be #f, in which case `id` is bound to #f
+           [(#:optional rest ...)
+            (let ([rest #'(rest ...)])
+              (when optional?
+                (oops! "multiple #:optional clauses" stx))
+              (set! optional? #t)
+              (loop rest))]
            ; bad
            [_ (oops! "bad syntax" fields)])))]
     [_ (oops! "bad syntax")]))

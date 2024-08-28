@@ -8,9 +8,10 @@
          FALSE
          not
          and
-         or)
+         or
+         define-comparator-impls)
 
-;; shim to rename boolean procedures
+;; submodule to rename boolean procedures
 (module bool-ops racket/base
   (provide not-proc
            and-proc
@@ -23,6 +24,13 @@
     (or x y)))
 
 (require (submod "." bool-ops))
+
+;; helper to construct comparator implementations
+(define-syntax-rule (define-comparator-impls repr [name impl-name impl-fn] ...)
+  (begin
+    (define-operator-impl (impl-name [x : repr] [y : repr]) bool
+      #:spec (name x y)
+      #:fl impl-fn) ...))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation
