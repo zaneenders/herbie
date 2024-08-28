@@ -57,13 +57,13 @@
                                       special-value?)
   (-> any/c
       type-name?
-      (-> any/c boolean?)
-      (-> bigfloat? any/c)
-      (-> any/c bigfloat?)
-      (-> natural? any/c)
-      (-> any/c natural?)
+      procedure?
+      procedure?
+      procedure?
+      procedure?
+      procedure?
       natural?
-      (-> any/c boolean?)
+      procedure?
       representation?)
   (representation name
                   type

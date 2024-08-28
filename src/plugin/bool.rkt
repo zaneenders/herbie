@@ -54,7 +54,7 @@
 
 (define-operator-impl (FALSE) bool
   #:spec (FALSE)
-  #:fl (const #t))
+  #:fl (const #f))
 
 (define-operator-impl (not [x : bool]) bool
   #:spec (not x)

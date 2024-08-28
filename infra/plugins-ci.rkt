@@ -3,7 +3,8 @@
 ;;; A platform for libsoftposit (used by CI)
 ;;; Optimized for C/C++ on Linux with a full libm
 
-(require herbie/plugin)
+(require herbie/plugin
+         herbie/plugin/bool)
 
 (define-platform boolean-platform
                  #:literal [bool 1]

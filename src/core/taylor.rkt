@@ -498,13 +498,15 @@
   (require rackunit
            "../syntax/types.rkt"
            "../syntax/load-plugin.rkt")
+
+  (load-herbie-builtins)
+
   (define batch (progs->batch (list '(pow x 1.0))))
   (set! batch (expand-taylor batch))
   (define root (vector-ref (batch-roots batch) 0))
 
-  (check-pred exact-integer? (car (vector-ref (taylor 'x batch) root))))
+  (check-pred exact-integer? (car (vector-ref (taylor 'x batch) root)))
 
-(module+ test
   (define (coeffs expr #:n [n 7])
     (define batch (progs->batch (list expr)))
     (set! batch (expand-taylor batch))

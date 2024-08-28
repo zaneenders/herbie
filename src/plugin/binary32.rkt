@@ -45,31 +45,31 @@
 ;; Implementations
 
 (define-constant-impls binary32
-  [PI.f32 PI pi]
-  [E.f32 E (exp 1.0)]
+  [PI.f32 PI (->float32 pi)]
+  [E.f32 E (->float32 (exp 1.0))]
   [INFINITY.f32 INFINITY +inf.0]
   [NAN.f32 NAN +nan.0])
 
 (define-operator-impl (neg.f32 [x : binary32]) binary32
   #:spec (neg x)
   #:fpcore (! :precision binary32 (- x))
-  #:fl -)
+  #:fl fl32-)
 
 (define-operator-impl (+.f32 [x : binary32] [y : binary32]) binary32
   #:spec (+ x y)
-  #:fl +)
+  #:fl fl32+)
 
 (define-operator-impl (-.f32 [x : binary32] [y : binary32]) binary32
   #:spec (- x y)
-  #:fl -)
+  #:fl fl32-)
 
 (define-operator-impl (*.f32 [x : binary32] [y : binary32]) binary32
   #:spec (* x y)
-  #:fl *)
+  #:fl fl32*)
 
 (define-operator-impl (/.f32 [x : binary32] [y : binary32]) binary32
   #:spec (/ x y)
-  #:fl /)
+  #:fl fl32/)
 
 (define-comparator-impls binary32
   [==.f32 == =]

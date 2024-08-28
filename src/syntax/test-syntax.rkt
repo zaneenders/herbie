@@ -1,8 +1,9 @@
 #lang racket
 
-(require "load-plugin.rkt"
+(require (only-in "base.rkt" operator-impl-fl)
+         "load-plugin.rkt"
+         "platform.rkt"
          "syntax.rkt"
-         "types.rkt"
          (submod "syntax.rkt" internals)
          "../plugin/binary64.rkt")
 
@@ -18,7 +19,7 @@
     #:spec (- (log (+ 1 x)) (log (+ 1 (neg x))))
     #:fpcore (! :precision binary64 (log1pmd x)))
 
-  (define log1pmd-proc (impl-info 'log1pmd.f64 'fl))
+  (define log1pmd-proc (operator-impl-fl log1pmd.f64))
   (define log1pmd-vals '((0.0 . 0.0) (0.5 . 1.0986122886681098) (-0.5 . -1.0986122886681098)))
   (for ([(pt out) (in-dict log1pmd-vals)])
     (check-equal? (log1pmd-proc pt) out (format "log1pmd(~a) = ~a" pt out)))
@@ -32,16 +33,25 @@
            (parameterize ([bf-precision 12])
              (bigfloat->flonum (bfsin (bf x))))))
 
-  (define sin-proc (impl-info 'fast-sin.f64 'fl))
+  (define sin-proc (operator-impl-fl fast-sin.f64))
   (define sin-vals '((0.0 . 0.0) (1.0 . 0.841552734375) (-1.0 . -0.841552734375)))
   (for ([(pt out) (in-dict sin-vals)])
     (check-equal? (sin-proc pt) out (format "sin(~a) = ~a" pt out)))
 
+  (define-platform extensions
+    [log1pmd.f64 1]
+    [fast-sin.f64 1])
+
+  (*active-platform*
+    (platform-union
+      (*active-platform*)
+      extensions))
+
   ; get-fpcore-impl
 
-  (define f64 (get-representation 'binary64))
+  (define f64 binary64)
   (define (get-impl op props itypes)
-    (get-fpcore-impl op props itypes #:impls (all-operator-impls)))
+    (get-fpcore-impl op props itypes))
 
   (check-equal? (get-impl '+ '((:precision . binary64)) (list f64 f64)) '+.f64)
   (check-equal? (get-impl '+ '((:precision . binary64)) (list f64 f64)) '+.f64)
