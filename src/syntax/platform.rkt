@@ -3,6 +3,7 @@
 (require "../utils/common.rkt"
          "../utils/errors.rkt"
          "../core/programs.rkt"
+         "base.rkt"
          "syntax.rkt"
          "types.rkt")
 
@@ -36,24 +37,14 @@
            platform-subtract
            platform-filter))
 
-;;; Platforms describe a set of representations, operator, and constants
+;;; Platforms describe a set of representations and operator implementations
 ;;; Herbie should use during its improvement loop. Platforms are just
 ;;; a "type signature" - they provide no implementations of floating-point
 ;;; operations (see plugins). During runtime, platforms will verify if
 ;;; every listed feature is actually loaded by Herbie and will panic if
 ;;; implemenations are missing. Unlike plugins, only one platform may be
 ;;; active at any given time and platforms may be activated or deactivated.
-;;;
-;;; A small API is provided for platforms for querying the supported
-;;; operators, operator implementations, and representation conversions.
-(struct platform (name reprs impls impl-costs repr-costs)
-  #:name $platform
-  #:constructor-name create-platform
-  #:methods gen:custom-write
-  [(define (write-proc p port mode)
-     (if (platform-name p)
-         (fprintf port "#<platform:~a>" (platform-name p))
-         (fprintf port "#<platform>")))])
+
 
 ;; Platform table, mapping name to platform
 (define platforms (make-hash))
@@ -79,7 +70,7 @@
 (define (register-platform! name pform)
   (when (hash-has-key? platforms name)
     (error 'register-platform! "platform already registered ~a" name))
-  (hash-set! platforms name (struct-copy $platform pform [name name])))
+  (hash-set! platforms name (struct-copy platform pform [name name])))
 
 ;; Optional error handler based on a value `optional?`.
 (define-syntax-rule (with-cond-handlers optional? ([pred handle] ...) body ...)
@@ -148,7 +139,7 @@
           (string-join (for/list ([m (in-set missing)])
                          (format "~a" m))
                        " ")))
-  (create-platform #f reprs impls (make-immutable-hash (hash->list costs)) repr-costs))
+  (platform #f reprs impls (make-immutable-hash (hash->list costs)) repr-costs))
 
 (begin-for-syntax
   ;; Parse if cost syntax
@@ -277,7 +268,7 @@
     (define repr-cost (merge-cost pform-repr-costs repr #:optional? #t))
     (when repr-cost
       (set! repr-costs (hash-set repr-costs repr repr-cost))))
-  (create-platform #f reprs impls impl-costs repr-costs))
+  (platform #f reprs impls impl-costs repr-costs))
 
 ;; Set union for platforms.
 ;; Use list operations for deterministic ordering.
@@ -307,7 +298,7 @@
                    (repr-supported? (impl-info impl 'otype))
                    (andmap repr-supported? (impl-info impl 'itype))))
             (platform-impls pform)))
-  (create-platform #f reprs* impls*))
+  (platform #f reprs* impls*))
 
 ;; Macro version of `make-platform-filter`.
 (define-syntax (platform-filter stx)

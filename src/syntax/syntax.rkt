@@ -5,11 +5,11 @@
 (require "../utils/common.rkt"
          "../utils/errors.rkt"
          "../core/rival.rkt"
+         "base.rkt"
          "matcher.rkt"
          "types.rkt")
 
-(provide (rename-out [operator-or-impl? operator?])
-         (struct-out literal)
+(provide (struct-out literal)
          (struct-out approx)
          variable?
          constant-operator?
@@ -47,17 +47,7 @@
 ;; Real operators
 ;; Pure mathematical operations
 
-;; TODO: specs should really be associated with impls
-;; unfortunately Herbie still mandates that every impl
-;; has an associated operator so the spec is here
-
-;; A real operator requires
-;;  - a (unique) name
-;;  - input and output types
-;;  - optionally a deprecated? flag [#f by default]
-(struct operator (name itype otype deprecated))
-
-;; All real operators
+;; Table of every real operator
 (define operators (make-hasheq))
 
 ;; Checks if an operator has been registered.
@@ -211,19 +201,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Operator implementations
 ;; Floating-point operations that approximate mathematical operations
-
-;; Operator implementations _approximate_ a program of
-;; mathematical operators with fixed input and output representations.
-;;
-;; An operator implementation requires
-;;  - a (unique) name
-;;  - input variables/representations
-;;  - output representation
-;;  - a specification it approximates
-;;  - its FPCore representation
-;;  - a floating-point implementation
-;;
-(struct operator-impl (name ctx spec fpcore fl))
 
 ;; Operator implementation table
 ;; Tracks implementations that are loaded into Racket's runtime
@@ -527,11 +504,6 @@
 (define (impl-exists? op)
   (hash-has-key? operator-impls op))
 
-(define (operator-or-impl? op)
-  (and (symbol? op)
-       (not (equal? op 'if))
-       (or (hash-has-key? operators op) (hash-has-key? operator-impls op))))
-
 (define (constant-operator? op)
   (and (symbol? op)
        (or (and (hash-has-key? operators op) (null? (operator-itype (hash-ref operators op))))
@@ -542,14 +514,6 @@
        (or (not (hash-has-key? operators var))
            (not (null? (operator-itype (hash-ref operators var)))))
        (or (not (hash-has-key? operator-impls var)) (not (null? (impl-info var 'vars))))))
-
-;; Floating-point expressions require that numbers
-;; be rounded to a particular precision.
-(struct literal (value precision) #:prefab)
-
-;; An approximation of a specification by
-;; an arbitrary floating-point expression.
-(struct approx (spec impl) #:prefab)
 
 ;; name -> (vars repr body)	;; name -> (vars prec body)
 (define *functions* (make-parameter (make-hasheq)))

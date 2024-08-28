@@ -2,12 +2,16 @@
 
 (provide types
          type-name?
+         define-type
+         *context*
+         *active-platform*
          (struct-out representation)
          (struct-out context)
          (struct-out operator)
          (struct-out operator-impl)
          (struct-out literal)
-         (struct-out approx))
+         (struct-out approx)
+         (struct-out platform))
          
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -19,8 +23,13 @@
 
 (define types (mutable-seteq))
 
+;; Is the argument registered as a type?
 (define (type-name? x)
   (set-member? types x))
+
+;; Declares a symbol to be a type
+(define-syntax-rule (define-type name _ ...)
+  (set-add! types 'name))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Representations": type in a floating-point program
@@ -51,6 +60,9 @@
 ;;  - output representation : representation?
 
 (struct context (vars repr var-reprs) #:transparent)
+
+;; Current context
+(define *context* (make-parameter #f))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Operator": pure, mathematical operator
@@ -96,3 +108,24 @@
 ;;  - floating-point program : expr?
 
 (struct approx (spec impl) #:prefab)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; "Platform": set of supports operator implementations
+;; and a cost model of floating-point programs.
+;;
+;; Platforms are defined by
+;;  - (optional) name : symbol?
+;;  - supported representations : hash? [symbol? -> representation?]
+;;  - supported implementation names : hash? [symbol? -> operator-impl?]
+;;  - cost of literals / variables : hash? [symbol? -> number?]
+;;  - cost of implementations : hash? [symbol? -> number?]
+
+(struct platform (name reprs impls impl-costs repr-costs)
+  #:methods gen:custom-write
+  [(define (write-proc p port mode)
+     (if (platform-name p)
+         (fprintf port "#<platform:~a>" (platform-name p))
+         (fprintf port "#<platform>")))])
+
+;; Current platform
+(define *active-platform* (make-parameter #f))

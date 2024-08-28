@@ -1,7 +1,8 @@
 #lang racket
 
 (require "../utils/common.rkt"
-         "../utils/errors.rkt")
+         "../utils/errors.rkt"
+         "base.rkt")
 
 (provide type-name?
          (struct-out representation)
@@ -21,26 +22,14 @@
            register-representation!
            register-representation-alias!))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
-
-(define type-dict (make-hasheq))
-(define (type-name? x)
-  (hash-has-key? type-dict x))
-
-(define-syntax-rule (define-type name _ ...)
-  (hash-set! type-dict 'name #t))
 
 (define-type real)
 (define-type bool)
 
-;; Representations
-
-(struct representation
-        (name type repr? bf->repr repr->bf ordinal->repr repr->ordinal total-bits special-value?)
-  #:transparent
-  #:methods gen:custom-write
-  [(define (write-proc repr port mode)
-     (fprintf port "#<representation ~a>" (representation-name repr)))])
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Representations interface
 
 (define representations (hash))
 
@@ -121,18 +110,16 @@
 (define-syntax-rule (define-representation (name type repr?) args ...)
   (register-representation! 'name 'type repr? args ...))
 
-;; Contexts
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Context interface
 
-(struct context (vars repr var-reprs) #:transparent)
-
-;; Current context
-(define *context* (make-parameter #f))
-
+;; Functionally extends a context with a variable and its representation.
 (define (context-extend ctx var repr)
   (struct-copy context
                ctx
                [vars (cons var (context-vars ctx))]
                [var-reprs (cons repr (context-var-reprs ctx))]))
 
+;; Looks up the representation of a context.
 (define (context-lookup ctx var)
   (dict-ref (map cons (context-vars ctx) (context-var-reprs ctx)) var))
