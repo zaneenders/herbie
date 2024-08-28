@@ -64,12 +64,12 @@
   #:fl fl32/)
 
 (define-comparator-impls binary32
-                         [== ==.f32 =]
-                         [!= !=.f32 (negate =)]
-                         [< <.f32 <]
-                         [> >.f32 >]
-                         [<= <=.f32 <=]
-                         [>= >=.f32 >=])
+  [== ==.f32 =]
+  [!= !=.f32 (negate =)]
+  [< <.f32 <]
+  [> >.f32 >]
+  [<= <=.f32 <=]
+  [>= >=.f32 >=])
 
 (define-libm-impls/binary32 [(binary32 binary32)
                              (acos acosh

@@ -9,5 +9,7 @@
     [("define-operators") (standard-formatter-map "begin")]
     [("define-operator-impl")
      (format-uniform-body/helper 2 #:body-formatter (format-clause-2/indirect) #:require-body? #f)]
+    [("define-constant-impls") (standard-formatter-map "lambda")]
+    [("define-comparator-impls") (standard-formatter-map "lambda")]
     [("define-libm-impls/binary64") (standard-formatter-map "begin")]
     [else #f]))

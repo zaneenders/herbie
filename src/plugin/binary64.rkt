@@ -10,6 +10,10 @@
          "utils.rkt")
 
 (provide binary64
+         PI.f64
+         E.f64
+         INFINITY.f64
+         NAN.f64
          neg.f64
          +.f64
          -.f64
@@ -37,6 +41,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Implementations
 
+(define-constant-impls binary64
+  [PI.f64 PI pi]
+  [E.f64 E (exp 1.0)]
+  [INFINITY.f64 INFINITY +inf.0]
+  [NAN.f64 NAN +nan.0])
+
 (define-operator-impl (neg.f64 [x : binary64]) binary64
   #:spec (neg x)
   #:fpcore (! :precision binary64 (- x))
@@ -58,13 +68,13 @@
   #:spec (/ x y)
   #:fl /)
 
-  (define-comparator-impls binary64
-                         [==.f64 == =]
-                         [!=.f64 != (negate =)]
-                         [<.f64 < <]
-                         [>.f64 > >]
-                         [<=.f64 <= <=]
-                         [>=.f64 >= >=])
+(define-comparator-impls binary64
+  [==.f64 == =]
+  [!=.f64 != (negate =)]
+  [<.f64 < <]
+  [>.f64 > >]
+  [<=.f64 <= <=]
+  [>=.f64 >= >=])
 
 (define-syntax (define-libm-impl/binary64 stx)
   (syntax-case stx ()
@@ -93,21 +103,34 @@
   [asin.f64 (asin x)]
   [asinh.f64 (asinh x)]
   [atan.f64 (atan x)]
+  [atan2.f64 (atan2 x y)]
   [atanh.f64 (atanh x)]
   [cbrt.f64 (cbrt x)]
   [ceil.f64 (ceil x)]
+  [copysign.f64 (copysign x y)]
   [cos.f64 (cos x)]
   [cosh.f64 (cosh x)]
   [erf.f64 (erf x)]
+  [erfc.f64 (erfc x) #:spec (- 1 (erf x))]
   [exp.f64 (exp x)]
   [exp2.f64 (exp2 x)]
+  [expm1.f64 (expm1 x) #:spec (- (exp x) 1)]
   [fabs.f64 (fabs x)]
+  [fdim.f64 (fdim x y)]
   [floor.f64 (floor x)]
+  [fma.f64 (fma x y z) #:spec (+ (* x y) z)]
+  [fmax.f64 (fmax x y)]
+  [fmin.f64 (fmin x y)]
+  [fmod.f64 (fmod x y)]
+  [hypot.f64 (hypot x y) #:spec (+ (* x x) (* y y))]
   [lgamma.f64 (lgamma x)]
   [log.f64 (log x)]
   [log10.f64 (log10 x)]
+  [log1p.f64 (log1p x) #:spec (log (+ 1 x))]
   [log2.f64 (log2 x)]
   [logb.f64 (logb x)]
+  [pow.f64 (pow x y)]
+  [remainder.f64 (remainder x y)]
   [rint.f64 (rint x)]
   [round.f64 (round x)]
   [sin.f64 (sin x)]

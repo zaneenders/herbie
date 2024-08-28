@@ -145,9 +145,9 @@
   #:fl (from-bigfloat bffma))
 
 (define-comparator-impls binary64
-                         [== ==.rkt =]
-                         [!= !=.rkt (negate =)]
-                         [< <.rkt <]
-                         [> >.rkt >]
-                         [<= <=.rkt <=]
-                         [>= >=.rkt >=])
+  [== ==.rkt =]
+  [!= !=.rkt (negate =)]
+  [< <.rkt <]
+  [> >.rkt >]
+  [<= <=.rkt <=]
+  [>= >=.rkt >=])

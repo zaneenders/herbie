@@ -26,10 +26,11 @@
 (require (submod "." bool-ops))
 
 ;; helper to construct comparator implementations
-(define-syntax-rule (define-comparator-impls repr [name impl-name impl-fn] ...)
+(define-syntax-rule (define-comparator-impls repr
+                      [impl-name spec-name impl-fn] ...)
   (begin
     (define-operator-impl (impl-name [x : repr] [y : repr]) bool
-      #:spec (name x y)
+      #:spec (spec-name x y)
       #:fl impl-fn) ...))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
