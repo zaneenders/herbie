@@ -82,7 +82,6 @@
   (define subexprs-fn
     (parameterize ([*max-mpfr-prec* 128])
       (eval-progs-real spec-list ctxs)))
-  (eprintf "~a\n" spec-list)
   (values subexprs repr-hash subexprs-fn subexprs-log))
 
 (define (predict-errors ctx pctx subexprs-list repr-hash subexprs-fn subexprs-log)
@@ -211,8 +210,6 @@
          (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
          (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
 
-         (eprintf "~a ~a ~a " pt xlog ylog)
-
          (cond
            [(> (- x.eps y.eps) 100) (silence y-ex)]
            [(> (- y.eps x.eps) 100) (silence x-ex)])
@@ -221,26 +218,26 @@
            ; Condition number hallucination:
            ; When x - y correctly underflows, CN is high
            ; even though the answer is correct
-           [(underflow? slog) (eprintf "hallucination\n") #f]
+           [(underflow? slog) #f]
 
            ; nan rescue:
            ; inf - inf = nan but should actually get an inf
-           [(and (overflow? xlog) (overflow? ylog) (same-sign?* xfl yfl)) (eprintf "nanrescue\n")
+           [(and (overflow? xlog) (overflow? ylog) (same-sign?* xfl yfl))
             (mark-erroneous! subexpr 'nan-rescue)]
 
            ; inf rescue
            ; If x or y overflow and the other arg rescues
            ; it
-           [(and (overflow? xlog) (<= (abs se) MAX-EXP)) (eprintf "oflowleft\n")(mark-erroneous! subexpr 'oflow-left)]
-           [(and (overflow? ylog) (<= (abs se) MAX-EXP)) (eprintf "oflowright\n")(mark-erroneous! subexpr 'oflow-right)]
+           [(and (overflow? xlog) (<= (abs se) MAX-EXP)) (mark-erroneous! subexpr 'oflow-left)]
+           [(and (overflow? ylog) (<= (abs se) MAX-EXP)) (mark-erroneous! subexpr 'oflow-right)]
 
            ; High condition number:
            ; CN(+, x, y) = |x / x - y|
-           [(or (> cond-x 100) (> cond-y 100)) (eprintf "cancellation\n")(mark-erroneous! subexpr 'cancellation)]
+           [(or (> cond-x 100) (> cond-y 100)) (mark-erroneous! subexpr 'cancellation)]
 
            ; Maybe
-           [(or (> cond-x 32) (> cond-y 32)) (eprintf "maybe\n")(mark-maybe! subexpr 'cancellation)]
-           [else (eprintf "none\n")#f])]
+           [(or (> cond-x 32) (> cond-y 32)) (mark-maybe! subexpr 'cancellation)]
+           [else #f])]
 
         [(list (or 'sin.f64 'sin.f32) x-ex)
          #:when (list? x-ex)
