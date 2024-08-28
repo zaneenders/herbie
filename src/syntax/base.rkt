@@ -12,7 +12,6 @@
          (struct-out literal)
          (struct-out approx)
          (struct-out platform))
-         
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Types": type in a real number program

@@ -15,13 +15,11 @@
          define-ruleset*
          register-ruleset!
          register-operator-impl!
-         register-representation!
-         register-representation-alias!
          register-conversion-generator!
-         register-generator!
          register-operator!
          (struct-out representation)
          get-representation
+         rename-representation
          warn
          define-platform
          get-platform

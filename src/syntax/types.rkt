@@ -1,5 +1,7 @@
 #lang racket
 
+(require math/bigfloat)
+
 (require "../utils/common.rkt"
          "../utils/errors.rkt"
          "base.rkt")
@@ -18,9 +20,7 @@
 (module+ internals
   (provide define-type
            define-representation
-           register-generator!
-           register-representation!
-           register-representation-alias!))
+           rename-representation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
@@ -30,8 +30,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representations interface
-
-(define representations (hash))
 
 ;; Representation name sanitizer
 (define (repr->symbol repr)
@@ -45,70 +43,79 @@
     ['bool '()]
     ['real (list (cons ':precision (representation-name repr)))]))
 
-;; Repr / operator generation
-;; Some plugins might define 'parameterized' reprs (e.g. fixed point with
-;; m integer and n fractional bits). Since defining an infinite number of reprs
-;; is impossible, Herbie stores a list of 'repr generators' to query if it comes
-;; across a repr that is not known at the time.
+;; Creates a new representation.
+(define/contract (make-representation name
+                                      type
+                                      repr?
+                                      bf->repr
+                                      repr->bf
+                                      ordinal->repr
+                                      repr->ordinal
+                                      total-bits
+                                      special-value?)
+  (-> any/c
+      type-name?
+      (-> any/c boolean?)
+      (-> bigfloat? any/c)
+      (-> any/c bigfloat?)
+      (-> natural? any/c)
+      (-> any/c natural?)
+      natural?
+      (-> any/c boolean?)
+      representation?)
+  (representation name
+                  type
+                  repr?
+                  bf->repr
+                  repr->bf
+                  ordinal->repr
+                  repr->ordinal
+                  total-bits
+                  special-value?))
 
-;; Generators take one argument, a repr name, and returns true if knows what the
-;; repr is and has generated that repr and its operators, and false otherwise
-(define repr-generators '())
-(define *current-generator* (make-parameter #f))
+;; Copies a representation and associates a new name.
+(define/contract (rename-representation repr name)
+  (-> representation? any/c representation?)
+  (struct-copy representation repr [name name]))
 
-(define/contract (register-generator! proc)
-  (-> (-> any/c any/c) void?)
-  (unless (set-member? repr-generators proc)
-    (set! repr-generators (cons proc repr-generators))))
+;; Syntactic form for defining a new representation
+(define-syntax (define-representation stx)
+  (define (oops! why [what #f])
+    (raise-syntax-error 'define-representation why stx what))
+  (syntax-case stx ()
+    [(_ id (name type repr?) field ...)
+     (let ([id #'id]
+           [fields #'(field ...)])
+       (unless (identifier? id)
+         (oops! "expected identifier" id))
+       (syntax-case fields ()
+         [(bf->repr repr->bf ordinal->repr repr->ordinal total-bits special-value?)
+          (with-syntax ([id id])
+            #'(define id
+                (make-representation 'name
+                                     'type
+                                     repr?
+                                     bf->repr
+                                     repr->bf
+                                     ordinal->repr
+                                     repr->ordinal
+                                     total-bits
+                                     special-value?)))]
+         [_ (oops! "incorrect number of fields" fields)]))]
+    [_ (oops! "bad syntax")]))
 
-;; Queries each plugin to generate the representation
-(define (generate-repr repr-name)
-  (or (hash-has-key? representations repr-name)
-      (for/or ([proc repr-generators])
-        ;; Check if a user accidently created an infinite loop in their plugin!
-        (when (and (eq? proc (*current-generator*)) (not (hash-has-key? representations repr-name)))
-          (raise-herbie-error
-           (string-append
-            "Tried to generate `~a` representation while generating the same representation. "
-            "Check your plugin to make sure you register your representation(s) "
-            "before calling `get-representation`!")
-           repr-name))
-        (parameterize ([*current-generator* proc])
-          (proc repr-name)))))
+;; Checks if a representation exists in the current platform.
+(define (repr-exists? name)
+  (define reprs (platform-reprs (*active-platform*)))
+  (hash-has-key? reprs name))
 
-;; Returns the representation associated with `name`
-;; attempts to generate the repr if not initially found
+;; Looks up a representation in the current platform.
 (define (get-representation name)
-  (or (hash-ref representations name #f)
-      (and (generate-repr name) (hash-ref representations name #f))
+  (define reprs (platform-reprs (*active-platform*)))
+  (or (hash-ref reprs name #f)
       (raise-herbie-error "Could not find support for ~a representation: ~a"
                           name
-                          (string-join (map ~s (hash-keys representations)) ", "))))
-
-(define (repr-exists? name)
-  (hash-has-key? representations name))
-
-;; Registers a representation that can be invoked with ':precision <name>'.
-;; Creates a new representation with the given traits and associates it
-;; with the same name. See `register-representation-alias!` for associating
-;; a representation with a different name.
-(define (register-representation! name type repr? . args)
-  (unless (type-name? type)
-    (raise-herbie-error "Tried to register a representation for type ~a: not found" type))
-  (define repr (apply representation name type repr? args))
-  (set! representations (hash-set representations name repr)))
-
-;; Associates an existing representation with a (possibly different) name.
-;; Useful for defining an common alias for an equivalent representation,
-;; e.g. float for binary32.
-(define (register-representation-alias! name repr)
-  (unless (representation? repr)
-    (raise-herbie-error "Tried to register an alias for representation ~a: not found"
-                        (representation-name repr)))
-  (set! representations (hash-set representations name repr)))
-
-(define-syntax-rule (define-representation (name type repr?) args ...)
-  (register-representation! 'name 'type repr? args ...))
+                          (string-join (map ~s (hash-keys reprs)) ", "))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Context interface

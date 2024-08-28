@@ -13,7 +13,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; representation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-representation (binary32 real float32?)
+(define-representation binary32
+                       (binary32 real float32?)
                        bigfloat->float32
                        bf
                        (shift 31 ordinal->float32)

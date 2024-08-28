@@ -337,8 +337,7 @@
        fpcore]
       [else ; not provided => need to generate it
        (define repr (context-repr ctx))
-       (define bool-repr (get-representation 'bool))
-       (if (equal? repr bool-repr)
+       (if (eq? (representation-name repr) 'bool)
            `(,op ,@vars) ; special case: boolean-valued operations do not need a precision annotation
            `(! :precision ,(representation-name repr) (,op ,@vars)))]))
   ; check or synthesize floating-point operation
@@ -366,7 +365,7 @@
   (define (oops! why [sub-stx #f])
     (raise-syntax-error 'define-operator-impl why stx sub-stx))
   (syntax-case stx (:)
-    [(_ (id [var : repr] ...) rtype fields ...)
+    [(_ (id [var : irepr] ...) orepr fields ...)
      (let ([id #'id]
            [vars (syntax->list #'(var ...))]
            [fields #'(fields ...)])
@@ -388,9 +387,7 @@
                           [core core]
                           [fl-expr fl-expr])
               #'(register-operator-impl! 'id
-                                         (context '(var ...)
-                                                  (get-representation 'rtype)
-                                                  (list (get-representation 'repr) ...))
+                                         (context '(var ...) orepr (list irepr ...))
                                          'spec
                                          #:fl fl-expr
                                          #:fpcore 'core))]

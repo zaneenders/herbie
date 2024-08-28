@@ -2,7 +2,9 @@
 
 ;; Common definitions for the builtin plugins
 
-(require "../../plugin.rkt")
+(require "../../plugin.rkt"
+         "../../plugin/bool.rkt")
+
 (provide (all-defined-out)
          (all-from-out "../../plugin.rkt"))
 

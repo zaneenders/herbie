@@ -45,7 +45,6 @@
 ;;; implemenations are missing. Unlike plugins, only one platform may be
 ;;; active at any given time and platforms may be activated or deactivated.
 
-
 ;; Platform table, mapping name to platform
 (define platforms (make-hash))
 

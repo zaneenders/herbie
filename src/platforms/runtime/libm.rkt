@@ -45,11 +45,11 @@
   (define (oops! why [sub-stx #f])
     (raise-syntax-error 'define-libm-impl why stx sub-stx))
   (define (repr->type repr)
-    (syntax-case repr (binary64 binary32 integer)
-      [binary64 #'double]
-      [binary32 #'float]
-      [integer #'integer]
-      [_ (oops! "unknown type" repr)]))
+    (case (syntax-e repr)
+      [(binary64) #'double]
+      [(binary32) #'float]
+      [(integer) #'integer]
+      [else (oops! "unknown type" repr)]))
   (syntax-case stx ()
     [(_ cname (op name itype ...) otype fields ...)
      (let ([op #'op]

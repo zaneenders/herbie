@@ -12,16 +12,6 @@
 (module test racket/base
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;; representation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-representation (binary64 real flonum?)
-                       bigfloat->flonum
-                       bf
-                       (shift 63 ordinal->flonum)
-                       (unshift 63 flonum->ordinal)
-                       64
-                       (conjoin number? nan?))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; constants ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-constants binary64
