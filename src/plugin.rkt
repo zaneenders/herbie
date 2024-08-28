@@ -8,23 +8,30 @@
          (submod "core/rules.rkt" internals))
 
 (provide define-type
+         ; representations
          define-representation
-         define-operator-impl
+         (struct-out representation)
+         get-representation
+         make-representation
+         rename-representation
+         ; operators
          define-operator
+         register-operator!
+         ; operator implementations
+         define-operator-impl
+         make-operator-impl
+         register-conversion-generator!
+         ; rulesets
          define-ruleset
          define-ruleset*
          register-ruleset!
-         register-operator-impl!
-         register-conversion-generator!
-         register-operator!
-         (struct-out representation)
-         get-representation
-         rename-representation
-         warn
+         ; platform
          define-platform
          get-platform
          register-platform!
          platform-union
          platform-intersect
          platform-subtract
-         platform-filter)
+         platform-filter
+         ; misc
+         warn)

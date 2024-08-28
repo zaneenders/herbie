@@ -20,6 +20,7 @@
 (module+ internals
   (provide define-type
            define-representation
+           make-representation
            rename-representation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -10,7 +10,6 @@
          make-debug-context)
 
 ;; Builtin plugins
-(define-runtime-module-path bool-plugin "../platforms/bool.rkt")
 (define-runtime-module-path binary32-plugin "../platforms/binary32.rkt")
 (define-runtime-module-path binary64-plugin "../platforms/binary64.rkt")
 (define-runtime-module-path fallback-plugin "../platforms/fallback.rkt")
@@ -24,7 +23,6 @@
 (define (load-herbie-builtins)
   ;; Load in all plugins
   ;; Warning: the order here is important!
-  (dynamic-require bool-plugin #f)
   (dynamic-require binary64-plugin #f)
   (dynamic-require binary32-plugin #f)
   (dynamic-require fallback-plugin #f)
@@ -33,8 +31,7 @@
   (dynamic-require default-platform #f)
   (dynamic-require math-platform #f)
   ; activate the required platform
-  (*active-platform* (get-platform (*platform-name*)))
-  (activate-platform! (*active-platform*)))
+  (*active-platform* (get-platform (*platform-name*))))
 
 (define (load-herbie-plugins)
   (load-herbie-builtins)
@@ -51,8 +48,7 @@
   (for ([path (in-list (*loose-plugins*))])
     (dynamic-require path #f))
   ; activate the actual requred platform
-  (*active-platform* (get-platform (*platform-name*)))
-  (activate-platform! (*active-platform*)))
+  (*active-platform* (get-platform (*platform-name*))))
 
 (define (make-debug-context vars)
   (load-herbie-builtins)

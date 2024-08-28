@@ -21,9 +21,6 @@
          impl-exists?
          impl-info
          all-operator-impls
-         (rename-out [all-active-operator-impls active-operator-impls])
-         activate-operator-impl!
-         clear-active-operator-impls!
          *functions*
          register-function!
          get-fpcore-impl
@@ -32,10 +29,10 @@
          cast-impl?)
 
 (module+ internals
-  (provide define-operator-impl
-           register-operator-impl!
-           define-operator
+  (provide define-operator
            register-operator!
+           define-operator-impl
+           make-operator-impl
            register-conversion-generator!
            variable?))
 
@@ -202,22 +199,19 @@
 ;; Operator implementations
 ;; Floating-point operations that approximate mathematical operations
 
-;; Operator implementation table
-;; Tracks implementations that are loaded into Racket's runtime
-(define operator-impls (make-hasheq))
+;; Checks if an implementation exists in the current platform.
+(define (impl-exists? op)
+  (define impls (platform-impls (*active-platform*)))
+  (hash-has-key? impls op))
 
-;; "Active" operator set
-;; Tracks implementations that will be used by Herbie during the improvement loop.
-;; Guaranteed to be a subset of the `operator-impls` table.
-(define active-operator-impls (mutable-set))
-
-;; Looks up a property `field` of an real operator `op`.
-;; Panics if the operator is not found.
+;; Looks up a property `field` of an operator implementation in the current platform.
+;; Panics if the operator implementation is not found.
 (define/contract (impl-info impl field)
   (-> symbol? (or/c 'vars 'itype 'otype 'spec 'fpcore 'fl) any/c)
-  (unless (hash-has-key? operator-impls impl)
+  (define impls (platform-impls (*active-platform*)))
+  (unless (hash-has-key? impls impl)
     (error 'impl-info "Unknown operator implementation ~a" impl))
-  (define info (hash-ref operator-impls impl))
+  (define info (hash-ref impls impl))
   (case field
     [(vars) (context-vars (operator-impl-ctx info))]
     [(itype) (context-var-reprs (operator-impl-ctx info))]
@@ -226,26 +220,10 @@
     [(fpcore) (operator-impl-fpcore info)]
     [(fl) (operator-impl-fl info)]))
 
-;; Returns all operator implementations.
+;; Returns all operator implementations in the current platform.
 (define (all-operator-impls)
-  (sort (hash-keys operator-impls) symbol<?))
-
-;; Returns all active operator implementations.
-(define (all-active-operator-impls)
-  (sort (set->list active-operator-impls) symbol<?))
-
-;; Activates an implementation.
-;; Panics if the operator is not found.
-(define (activate-operator-impl! name)
-  (unless (hash-has-key? operator-impls name)
-    (raise-herbie-missing-error "Unknown operator implementation ~a" name))
-  (set-add! active-operator-impls name))
-
-;; Clears the table of active implementations.
-(define (clear-active-operator-impls!)
-  (set-clear! active-operator-impls))
-
-;; Collects all operators
+  (define impls (platform-impls (*active-platform*)))
+  (sort (hash-keys impls) symbol<?))
 
 ;; Checks a specification.
 (define (check-spec! name ctx spec)
@@ -302,10 +280,10 @@
   (unless (equal? actual-ty otype)
     (type-error! spec actual-ty otype)))
 
-; Registers an operator implementation `name` with context `ctx` and spec `spec.
-; Can optionally specify a floating-point implementation and fpcore translation.
-(define/contract (register-operator-impl! name ctx spec #:fl [fl-proc #f] #:fpcore [fpcore #f])
-  (->* (symbol? context? any/c) (#:fl (or/c procedure? #f) #:fpcore any/c) void?)
+;; Creates an operator implementation with a given name, type signature, and specification.
+;; Optionally specify the floating-point implementation and FPCore translation.
+(define/contract (make-operator-impl name ctx spec #:fl [fl-proc #f] #:fpcore [fpcore #f])
+  (->* (symbol? context? any/c) (#:fl (or/c procedure? #f) #:fpcore any/c) operator-impl?)
   ; check specification
   (check-spec! name ctx spec)
   (define vars (context-vars ctx))
@@ -357,9 +335,8 @@
                            (define-values (_ exs) (real-apply compiler pt))
                            (if exs (first exs) fail))
                          name)]))
-  ; update tables
-  (define impl (operator-impl name ctx spec fpcore* fl-proc*))
-  (hash-set! operator-impls name impl))
+  ; create the implementation
+  (operator-impl name ctx spec fpcore* fl-proc*))
 
 (define-syntax (define-operator-impl stx)
   (define (oops! why [sub-stx #f])
@@ -386,11 +363,12 @@
                           [spec spec]
                           [core core]
                           [fl-expr fl-expr])
-              #'(register-operator-impl! 'id
-                                         (context '(var ...) orepr (list irepr ...))
-                                         'spec
-                                         #:fl fl-expr
-                                         #:fpcore 'core))]
+              #'(define id
+                  (make-operator-impl 'id
+                                      (context '(var ...) orepr (list irepr ...))
+                                      'spec
+                                      #:fl fl-expr
+                                      #:fpcore 'core)))]
            [(#:spec expr rest ...)
             (cond
               [spec (oops! "multiple #:spec clauses" stx)]
@@ -424,9 +402,11 @@
     [body (values '() body)]))
 
 ;; For a given FPCore operator, rounding context, and input representations,
-;; finds the best operator implementation. Panics if none can be found.
-(define/contract (get-fpcore-impl op prop-dict ireprs #:impls [all-impls (all-active-operator-impls)])
-  (->* (symbol? prop-dict/c (listof representation?)) (#:impls (listof symbol?)) symbol?)
+;; finds the best operator implementation in the current platform.
+;; Panics if none can be found.
+(define/contract (get-fpcore-impl op prop-dict ireprs)
+  (-> symbol? prop-dict/c (listof representation?) symbol?)
+  (define all-impls (platform-impls (*active-platform*)))
   ; gather all implementations that have the same spec, input representations,
   ; and its FPCore translation has properties that are found in `prop-dict`
   (define impls
@@ -475,8 +455,8 @@
           #t]
          [_ #f])))
 
-(define (get-cast-impl irepr orepr #:impls [impls (all-active-operator-impls)])
-  (get-fpcore-impl 'cast (repr->prop orepr) (list irepr) #:impls impls))
+(define (get-cast-impl irepr orepr)
+  (get-fpcore-impl 'cast (repr->prop orepr) (list irepr)))
 
 ; Similar to representation generators, conversion generators
 ; allow Herbie to query plugins for optimized implementations
@@ -498,19 +478,15 @@
 
 ;; Expression predicates ;;
 
-(define (impl-exists? op)
-  (hash-has-key? operator-impls op))
-
 (define (constant-operator? op)
   (and (symbol? op)
-       (or (and (hash-has-key? operators op) (null? (operator-itype (hash-ref operators op))))
-           (and (hash-has-key? operator-impls op) (null? (impl-info op 'vars))))))
+       (or (and (hash-has-key? operators op) (null? (operator-itype (hash-ref operators op)))))))
 
 (define (variable? var)
   (and (symbol? var)
        (or (not (hash-has-key? operators var))
            (not (null? (operator-itype (hash-ref operators var)))))
-       (or (not (hash-has-key? operator-impls var)) (not (null? (impl-info var 'vars))))))
+       (or (not (impl-exists? var)) (not (null? (impl-info var 'vars))))))
 
 ;; name -> (vars repr body)	;; name -> (vars prec body)
 (define *functions* (make-parameter (make-hasheq)))

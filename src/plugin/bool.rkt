@@ -4,9 +4,28 @@
          (submod "../syntax/types.rkt" internals))
 
 (provide bool
+         TRUE
+         FALSE
          not
          and
          or)
+
+;; shim to rename boolean procedures
+(module bool-ops racket/base
+  (provide not-proc
+           and-proc
+           or-proc)
+
+  (define not-proc not)
+  (define (and-proc x y)
+    (and x y))
+  (define (or-proc x y)
+    (or x y)))
+
+(require (submod "." bool-ops))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Representation
 
 (define-representation bool
                        (bool bool boolean?)
@@ -17,8 +36,25 @@
                        1
                        (const #f))
 
-(define-operator-impl (not [x : bool]) bool #:spec (not x) #:fpcore (! (not x)) #:fl not)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Implementations
 
-(define-operator-impl (and [x : bool] [y : bool]) bool #:spec (and x y) #:fl (lambda (x y) (and x y)))
+(define-operator-impl (TRUE) bool
+  #:spec (TRUE)
+  #:fl (const #t))
 
-(define-operator-impl (or [x : bool] [y : bool]) bool #:spec (or x y) #:fl (lambda (x y) (or x y)))
+(define-operator-impl (FALSE) bool
+  #:spec (FALSE)
+  #:fl (const #t))
+
+(define-operator-impl (not [x : bool]) bool
+  #:spec (not x)
+  #:fl not-proc)
+
+(define-operator-impl (and [x : bool] [y : bool]) bool
+  #:spec (and x y)
+  #:fl and-proc)
+
+(define-operator-impl (or [x : bool] [y : bool]) bool
+  #:spec (or x y)
+  #:fl or-proc)

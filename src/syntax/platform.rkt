@@ -10,7 +10,6 @@
 (provide define-platform
          get-platform
          *active-platform*
-         activate-platform!
          ;; Platform API
          ;; Operator sets
          (contract-out ;; Platforms
@@ -58,12 +57,6 @@
       (raise-herbie-error "unknown platform `~a`, found (~a)"
                           name
                           (string-join (map ~a (hash-keys platforms)) ", "))))
-
-;; Loads a platform.
-(define (activate-platform! pform)
-  ; replace the active operator table
-  (clear-active-operator-impls!)
-  (for-each activate-operator-impl! (platform-impls pform)))
 
 ;; Registers a platform under identifier `name`.
 (define (register-platform! name pform)

@@ -5,7 +5,9 @@
 (require math/base
          math/bigfloat
          math/special-functions)
-(require "runtime/utils.rkt")
+
+(require "runtime/utils.rkt"
+         "../plugin/binary64.rkt")
 
 ;; Do not run this file with `raco test`
 (module test racket/base
@@ -26,7 +28,8 @@
     [(_ (name tsig ...) fields ...)
      (let ([name #'name])
        (with-syntax ([name (string->symbol (format "~a.rkt" name))])
-         #'(define-operator-impl (name tsig ...) binary64 fields ...)))]))
+         #'(define-operator-impl (name tsig ...) binary64
+             fields ...)))]))
 
 (define-syntax-rule (define-1ary-fallback-operator op fn)
   (define-fallback-operator (op [x : binary64])
@@ -116,35 +119,30 @@
                                 [pow (no-complex expt)]
                                 [remainder remainder])
 
-(define-operator-impl (erfc.rkt [x : binary64])
-                      binary64
-                      #:spec (- 1 (erf x))
-                      #:fpcore (! :precision binary64 :math-library racket (erfc x))
-                      #:fl erfc)
+(define-operator-impl (erfc.rkt [x : binary64]) binary64
+  #:spec (- 1 (erf x))
+  #:fpcore (! :precision binary64 :math-library racket (erfc x))
+  #:fl erfc)
 
-(define-operator-impl (expm1.rkt [x : binary64])
-                      binary64
-                      #:spec (- (exp x) 1)
-                      #:fpcore (! :precision binary64 :math-library racket (expm1 x))
-                      #:fl (from-bigfloat bfexpm1))
+(define-operator-impl (expm1.rkt [x : binary64]) binary64
+  #:spec (- (exp x) 1)
+  #:fpcore (! :precision binary64 :math-library racket (expm1 x))
+  #:fl (from-bigfloat bfexpm1))
 
-(define-operator-impl (log1p.rkt [x : binary64])
-                      binary64
-                      #:spec (log (+ 1 x))
-                      #:fpcore (! :precision binary64 :math-library racket (log1p x))
-                      #:fl (from-bigfloat bflog1p))
+(define-operator-impl (log1p.rkt [x : binary64]) binary64
+  #:spec (log (+ 1 x))
+  #:fpcore (! :precision binary64 :math-library racket (log1p x))
+  #:fl (from-bigfloat bflog1p))
 
-(define-operator-impl (hypot.rkt [x : binary64] [y : binary64])
-                      binary64
-                      #:spec (sqrt (+ (* x x) (* y y)))
-                      #:fpcore (! :precision binary64 :math-library racket (hypot x y))
-                      #:fl (from-bigfloat bfhypot))
+(define-operator-impl (hypot.rkt [x : binary64] [y : binary64]) binary64
+  #:spec (sqrt (+ (* x x) (* y y)))
+  #:fpcore (! :precision binary64 :math-library racket (hypot x y))
+  #:fl (from-bigfloat bfhypot))
 
-(define-operator-impl (fma.rkt [x : binary64] [y : binary64] [z : binary64])
-                      binary64
-                      #:spec (+ (* x y) z)
-                      #:fpcore (! :precision binary64 :math-library racket (fma x y z))
-                      #:fl (from-bigfloat bffma))
+(define-operator-impl (fma.rkt [x : binary64] [y : binary64] [z : binary64]) binary64
+  #:spec (+ (* x y) z)
+  #:fpcore (! :precision binary64 :math-library racket (fma x y z))
+  #:fl (from-bigfloat bffma))
 
 (define-comparator-impls binary64
                          [== ==.rkt =]
