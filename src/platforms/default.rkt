@@ -3,7 +3,10 @@
 ;;; The default platform:
 ;;; C/C++ on Linux with a full libm
 
-(require "../plugin.rkt")
+(require "../plugin.rkt"
+         "../plugin/bool.rkt"
+         "../plugin/binary64.rkt"
+         "../plugin/binary32.rkt")
 
 ; universal boolean opertaions
 (define-platform boolean-platform

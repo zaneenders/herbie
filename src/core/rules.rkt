@@ -815,9 +815,10 @@
   (values vars spec (cons impl vars)))
 
 ;; Synthesizes lifting rules for a given platform.
-(define (platform-lifting-rules [pform (*active-platform*)])
+(define (platform-lifting-rules)
   ;; every impl maps to a spec
-  (define impls (platform-impls pform))
+  (define pform (*active-platform*))
+  (define impls (all-operator-impls))
   (define impl-rules
     (for/list ([impl (in-list impls)])
       (hash-ref! (*lifting-rules*)
@@ -834,8 +835,9 @@
   impl-rules)
 
 ;; Synthesizes lowering rules for a given platform.
-(define (platform-lowering-rules [pform (*active-platform*)])
-  (define impls (platform-impls pform))
+(define (platform-lowering-rules)
+  (define pform (*active-platform*))
+  (define impls (all-operator-impls))
   (for/list ([impl (in-list impls)])
     (hash-ref! (*lowering-rules*)
                (cons impl pform)
@@ -903,8 +905,8 @@
 ;; If a rule is over implementations, filters by supported implementations.
 ;; If a rule is over real operators, instantiates for every
 ;; possible implementation assignment.
-(define (platform-impl-rules rules [pform (*active-platform*)])
-  (define impls (list->seteq (platform-impls pform)))
+(define (platform-impl-rules rules)
+  (define impls (list->seteq (all-operator-impls)))
   (reap [sow]
         (for ([ru (in-list rules)])
           (match-define (rule name input output _ otype) ru)
@@ -917,7 +919,7 @@
              (define ops (append (ops-in-expr input) (ops-in-expr output)))
              (define isubsts (impl-combinations ops impls))
              (for* ([isubst (in-list isubsts)]
-                    [repr (in-list (platform-reprs pform))]
+                    [repr (in-list (all-representations))]
                     #:when (equal? (representation-type repr) otype))
                (define-values (input* ienv) (try-lower input repr isubst))
                (define-values (output* oenv) (try-lower output repr isubst))

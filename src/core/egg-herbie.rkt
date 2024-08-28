@@ -532,7 +532,7 @@
 ;; Returns all representatations (and their types) in the current platform.
 (define (all-reprs/types [pform (*active-platform*)])
   (remove-duplicates (append-map (lambda (repr) (list repr (representation-type repr)))
-                                 (platform-reprs pform))))
+                                 (all-representations))))
 
 ;; Returns the type(s) of an enode so it can be placed in the proper e-class.
 ;; Typing rules:
@@ -544,13 +544,13 @@
 ;; NOTE: we can constrain "every" type by using the platform.
 (define (enode-type enode egg->herbie)
   (match enode
-    [(? number?) (cons 'real (platform-reprs (*active-platform*)))] ; number
+    [(? number?) (cons 'real (all-representations))] ; number
     [(? symbol?) ; variable
      (match-define (cons _ repr) (hash-ref egg->herbie enode))
      (list repr (representation-type repr))]
     [(cons f _) ; application
      (cond
-       [(eq? f '$approx) (platform-reprs (*active-platform*))]
+       [(eq? f '$approx) (all-representations)]
        [(eq? f 'if) (all-reprs/types)]
        [(impl-exists? f) (list (impl-info f 'otype))]
        [else (list (operator-info f 'otype))])]))

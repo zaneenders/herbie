@@ -1,7 +1,8 @@
 #lang racket
 
-(require "../utils/common.rkt"
-         "../utils/errors.rkt"
+(require racket/hash)
+
+(require "../utils/errors.rkt"
          "../core/programs.rkt"
          "base.rkt"
          "syntax.rkt"
@@ -14,10 +15,6 @@
          ;; Operator sets
          (contract-out ;; Platforms
           [platform? (-> any/c boolean?)]
-          [platform-name (-> platform? any/c)]
-          [platform-reprs (-> platform? (listof representation?))]
-          [platform-impls (-> platform? (listof symbol?))]
-          [platform-casts (-> platform? (listof symbol?))]
           [platform-union (-> platform? platform? ... platform?)]
           [platform-intersect (-> platform? platform? ... platform?)]
           [platform-subtract (-> platform? platform? ... platform?)]
@@ -64,82 +61,41 @@
     (error 'register-platform! "platform already registered ~a" name))
   (hash-set! platforms name (struct-copy platform pform [name name])))
 
-;; Optional error handler based on a value `optional?`.
-(define-syntax-rule (with-cond-handlers optional? ([pred handle] ...) body ...)
-  (if optional?
-      (with-handlers ([pred handle] ...)
-        (begin
-          body ...))
-      (begin
-        body ...)))
-
-;; Constructor procedure for platforms.
-;; The platform is described by a list of implementations.
-;;
-;;  [<name>  (<cost> | #f)]
-;;
-;; Verifies that a platform is well-formed and the platform will be
-;; supported by Herbie's runtime. A platform specified by `optional?`
-;; may discard any implementations it fails to find in the Racket runtime.
-(define (make-platform pform
-                       literals
-                       #:optional? [optional? #f]
-                       #:if-cost [if-cost #f]
-                       #:default-cost [default-cost #f])
-  (define costs (make-hash))
-  (define missing (mutable-set))
-  (define impls
-    (reap [sow]
-          (for ([impl-sig (in-list pform)])
-            (match-define (list impl cost) impl-sig)
-            (define final-cost cost)
-            (unless (or cost default-cost)
-              (raise-herbie-error "Missing cost for ~a" impl))
-            (unless cost
-              (set! final-cost default-cost))
-            (with-cond-handlers optional?
-                                ([exn:fail:user:herbie:missing? (λ (_) (set-add! missing impl))])
-                                (cond
-                                  [(impl-exists? impl)
-                                   (hash-set! costs impl final-cost)
-                                   (sow impl)]
-                                  [else
-                                   (raise-herbie-missing-error
-                                    "Missing implementation ~a required by platform"
-                                    impl)])))))
-  (define reprs
-    (remove-duplicates (apply append
-                              (for/list ([impl (in-list impls)])
-                                `(,@(impl-info impl 'itype) ,(impl-info impl 'otype))))))
-
-  (define repr-costs (make-hash))
-  (for ([literal (in-list literals)])
-    (match-define (list repr cost) literal)
-    (cond
-      [(repr-exists? repr)
-       (if (hash-has-key? repr-costs repr)
-           (raise-herbie-error "Duplicate literal ~a" repr)
-           (hash-set! repr-costs (get-representation repr) cost))]
-      [else (raise-herbie-missing-error "Missing representation ~a required by platform" repr)]))
-  ; set cost of `if`
+;; Constructs a platform.
+;; A platform is just a set of implementations and a cost model.
+(define (make-platform impl&costs repr&costs #:if-cost [if-cost #f] #:default-cost [default-cost #f])
+  ; tables
+  (define impls (make-hasheq)) ; name -> impl
+  (define impl->cost (make-hasheq)) ; name -> cost
+  (define reprs (make-hash)) ; name -> repr
+  (define repr->cost (make-hasheq)) ; repr -> cost
+  ; process implementations
+  (for ([(impl cost) (in-dict impl&costs)])
+    (define name (operator-impl-name impl))
+    (define cost* (or cost default-cost))
+    (when (hash-has-key? impls name)
+      (error 'make-platform "duplicate implementation ~a" name))
+    (hash-set! impls name impl)
+    (hash-set! impl->cost name cost*)
+    (define ctx (operator-impl-ctx impl))
+    (for ([repr (in-list (cons (context-repr ctx) (context-var-reprs ctx)))])
+      (define name (representation-name repr))
+      (unless (hash-has-key? reprs name)
+        (hash-set! reprs name repr))))
+  ; process representations
+  (for ([(repr cost) (in-dict repr&costs)])
+    (when (hash-has-key? repr->cost repr)
+      (error 'make-platform "duplicate representation ~a" repr))
+    (hash-set! repr->cost repr cost))
+  ; optionally set cost of `if`
   (when if-cost
-    (hash-set! costs 'if if-cost))
-  ; emit warnings if need be
-  (unless (set-empty? missing)
-    (warn 'platform
-          "platform has missing optional implementations: ~a"
-          (string-join (for/list ([m (in-set missing)])
-                         (format "~a" m))
-                       " ")))
-  (platform #f reprs impls (make-immutable-hash (hash->list costs)) repr-costs))
-
-(begin-for-syntax
-  ;; Parse if cost syntax
-  (define (platform/parse-if-cost stx)
-    (syntax-case stx (max sum)
-      [(max x) #'(list 'max x)]
-      [(sum x) #'(list 'sum x)]
-      [x #'(list 'max x)])))
+    (hash-set! impl->cost 'if if-cost))
+  ; construct the platform
+  (platform #f
+            (make-immutable-hash (hash->list reprs))
+            (make-immutable-hasheq (hash->list impls))
+            impl->cost
+            repr->cost))
 
 ;; Macro version of `make-platform`
 ;;
@@ -147,18 +103,24 @@
 ;; ```
 ;; (define-platform default
 ;;   (platform
-;;     #:literal [binary64 64]                  ; literal representation with cost
-;;     #:literal [binary32 32]                  ; literal representation with cost
-;;     #:default-cost 1                         ; default cost per impl
-;;     #:if-cost 1                              ; cost of an if branch (using max strategy)
-;;     [fabs.f64 3]
-;;     fabs.f32
+;;     #:literal [binary64 64]    ; literal representation with cost
+;;     #:default-cost 1           ; default cost per impl
+;;     #:if-cost 1                ; cost of an if branch (using max strategy)
+;;     [fabs.f64 3]               ; implementation with explicit cost
+;;     neg.f64                    ; implementation with default cost
 ;;     ...
 ;; ))
 ;; ```
 (define-syntax (define-platform stx)
   (define (oops! why [sub-stx #f])
     (raise-syntax-error 'platform why stx sub-stx))
+
+  (define (platform/parse-if-cost stx)
+    (syntax-case stx (max sum)
+      [(max x) #'(list 'max x)]
+      [(sum x) #'(list 'sum x)]
+      [x #'(list 'max x)]))
+
   (syntax-case stx ()
     [(_ id cs ...)
      (let ([if-cost #f]
@@ -182,12 +144,21 @@
                             [if-cost if-cost]
                             [default-cost default-cost]
                             [optional? optional?])
-                #'(define platform-id
-                    (make-platform `([impls ,costs] ...)
-                                   `([reprs ,repr-costs] ...)
-                                   #:optional? optional?
+                #'
+                (begin
+                  (for ([name (in-list '(impls ...))]
+                        [impl (in-list (list impls ...))])
+                    (unless impl
+                      (if optional?
+                          (raise-herbie-missing-error "Missing implementation ~a required by platform"
+                                                      impl)
+                          (warn 'platform "platform has missing optional implementations: ~a" name))))
+                  (define platform-id
+                    (make-platform (list (cons impls costs) ...)
+                                   (list (cons reprs repr-costs) ...)
+                                   ;    #:optional? optional?
                                    #:if-cost if-cost
-                                   #:default-cost default-cost))))]
+                                   #:default-cost default-cost)))))]
            [(#:if-cost cost rest ...)
             (cond
               [if-cost (oops! "multiple #:if-cost clauses" stx)]
@@ -241,13 +212,15 @@
   ; apply set operation on impls
   (define impls (apply merge-impls (map platform-impls (cons p1 ps))))
   ; valid representations are based on impls
-  (define reprs
-    (remove-duplicates (for/fold ([reprs '()]) ([impl (in-list impls)])
-                         (append (cons (impl-info impl 'otype) (impl-info impl 'itype)) reprs))))
+  (define reprs (make-hash))
+  (for ([(_ info) (in-hash impls)])
+    (define ctx (operator-impl-ctx info))
+    (for ([repr (in-list (cons (context-repr ctx) (context-var-reprs ctx)))])
+      (hash-set! reprs (representation-name repr) repr)))
   ; impl costs are based on impls
   (define pform-impl-costs (map platform-impl-costs (cons p1 ps)))
   (define impl-costs
-    (for/hash ([impl (in-list impls)])
+    (for/hash ([(impl _) (in-hash impls)])
       (values impl (merge-cost pform-impl-costs impl))))
   ; special case for `if`
   (define if-cost (merge-cost pform-impl-costs 'if #:optional? #t))
@@ -256,29 +229,47 @@
   ; repr costs are based on reprs (may be missing)
   (define pform-repr-costs (map platform-repr-costs (cons p1 ps)))
   (define repr-costs (hash))
-  (for/list ([repr (in-list reprs)])
+  (for/list ([(repr _) (in-hash reprs)])
     (define repr-cost (merge-cost pform-repr-costs repr #:optional? #t))
     (when repr-cost
       (set! repr-costs (hash-set repr-costs repr repr-cost))))
-  (platform #f reprs impls impl-costs repr-costs))
+  (platform #f (make-immutable-hash (hash->list reprs)) impls impl-costs repr-costs))
 
 ;; Set union for platforms.
-;; Use list operations for deterministic ordering.
-(define platform-union (make-set-operation (λ (rs . rss) (remove-duplicates (apply append rs rss)))))
+(define platform-union
+  (make-set-operation (λ (impls . implss)
+                        (apply hash-union
+                               impls
+                               implss
+                               #:combine
+                               (lambda (impl1 impl2)
+                                 (unless (eq? impl1 impl2)
+                                   (error 'platform-union
+                                          "distinct implementations have the same name ~a ~a"
+                                          impl1
+                                          impl2)))))))
 
 ;; Set intersection for platforms.
-;; Use list operations for deterministic ordering.
 (define platform-intersect
-  (make-set-operation (λ (rs . rss)
-                        (for/fold ([rs rs]) ([rs0 (in-list rss)])
-                          (filter (curry set-member? (list->set rs0)) rs)))))
+  (make-set-operation (λ (impls . implss)
+                        (apply hash-intersect
+                               impls
+                               implss
+                               #:combine
+                               (lambda (impl1 impl2)
+                                 (unless (eq? impl1 impl2)
+                                   (error 'platform-intersect
+                                          "distinct implementations have the same name ~a ~a"
+                                          impl1
+                                          impl2)))))))
 
 ;; Set subtract for platforms.
-;; Use list operations for deterministic ordering.
 (define platform-subtract
-  (make-set-operation (λ (rs . rss)
-                        (for/fold ([rs rs]) ([rs0 (in-list rss)])
-                          (filter-not (curry set-member? (list->set rs0)) rs)))))
+  (make-set-operation (λ (impls . implss)
+                        (hash-filter-keys impls
+                                          (lambda (name)
+                                            (not (for/or ([impls (in-list implss)])
+                                                   (hash-has-key? impls name))))))))
 
 ;; Coarse-grained filters on platforms.
 (define ((make-platform-filter repr-supported? op-supported?) pform)

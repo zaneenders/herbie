@@ -4,7 +4,9 @@
 ;;; We use textbook mathematical operators, i.e.,
 ;;; no special numbers functions
 
-(require "../plugin.rkt")
+(require "../plugin.rkt"
+         "../plugin/bool.rkt"
+         "../plugin/binary64.rkt")
 
 (define move-cost 0.02333600000000001)
 (define fl-move-cost (* move-cost 4))

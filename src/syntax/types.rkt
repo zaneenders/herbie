@@ -9,6 +9,7 @@
 (provide type-name?
          (struct-out representation)
          get-representation
+         all-representations
          repr-exists?
          repr->symbol
          repr->prop
@@ -117,6 +118,11 @@
       (raise-herbie-error "Could not find support for ~a representation: ~a"
                           name
                           (string-join (map ~s (hash-keys reprs)) ", "))))
+
+;; Returns all representations in the current platform.
+(define (all-representations)
+  (define reprs (platform-reprs (*active-platform*)))
+  (hash-keys reprs #t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Context interface
