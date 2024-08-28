@@ -530,7 +530,7 @@
 (struct regraph (eclasses types leaf? constants specs parents canon egg->herbie))
 
 ;; Returns all representatations (and their types) in the current platform.
-(define (all-reprs/types [pform (*active-platform*)])
+(define (all-reprs/types)
   (remove-duplicates (append-map (lambda (repr) (list repr (representation-type repr)))
                                  (all-representations))))
 

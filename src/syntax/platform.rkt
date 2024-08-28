@@ -44,9 +44,6 @@
 ;; Platform table, mapping name to platform
 (define platforms (make-hash))
 
-;; Active platform
-(define *active-platform* (make-parameter #f))
-
 ;; Looks up a platform by identifier.
 ;; Panics if no platform is found.
 (define (get-platform name)
@@ -188,10 +185,6 @@
            [_ (oops! "bad syntax")])))]
     [_ (oops! "bad syntax")]))
 
-;; Casts between representations in a platform.
-(define (platform-casts pform)
-  (filter cast-impl? (platform-impls pform)))
-
 ;; Merger for costs.
 (define (merge-cost pform-costs key #:optional? [optional? #f])
   (define costs (map (lambda (h) (hash-ref h key #f)) pform-costs))
@@ -229,7 +222,7 @@
   ; repr costs are based on reprs (may be missing)
   (define pform-repr-costs (map platform-repr-costs (cons p1 ps)))
   (define repr-costs (hash))
-  (for/list ([(repr _) (in-hash reprs)])
+  (for/list ([(_ repr) (in-hash reprs)])
     (define repr-cost (merge-cost pform-repr-costs repr #:optional? #t))
     (when repr-cost
       (set! repr-costs (hash-set repr-costs repr repr-cost))))
