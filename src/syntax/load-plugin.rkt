@@ -10,8 +10,6 @@
          make-debug-context)
 
 ;; Builtin plugins
-(define-runtime-module-path binary32-plugin "../platforms/binary32.rkt")
-(define-runtime-module-path binary64-plugin "../platforms/binary64.rkt")
 (define-runtime-module-path fallback-plugin "../platforms/fallback.rkt")
 
 ;; Builtin platforms
@@ -23,8 +21,6 @@
 (define (load-herbie-builtins)
   ;; Load in all plugins
   ;; Warning: the order here is important!
-  (dynamic-require binary64-plugin #f)
-  (dynamic-require binary32-plugin #f)
   (dynamic-require fallback-plugin #f)
   ;; Load all platforms
   (dynamic-require c-platform #f)

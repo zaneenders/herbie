@@ -5,7 +5,11 @@
          (submod "syntax/types.rkt" internals)
          (submod "syntax/syntax.rkt" internals)
          (submod "syntax/platform.rkt" internals)
-         (submod "core/rules.rkt" internals))
+         (submod "core/rules.rkt" internals)
+         ; make sure they're loaded
+         "plugin/bool.rkt"
+         "plugin/binary64.rkt"
+         "plugin/binary32.rkt")
 
 (provide define-type
          ; representations
