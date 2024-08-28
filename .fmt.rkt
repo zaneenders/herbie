@@ -12,4 +12,6 @@
     [("define-constant-impls") (standard-formatter-map "lambda")]
     [("define-comparator-impls") (standard-formatter-map "lambda")]
     [("define-libm-impls/binary64") (standard-formatter-map "begin")]
+    [("define-libm-impls/binary32") (standard-formatter-map "begin")]
+    [("define-fallback-impls") (standard-formatter-map "begin")]
     [else #f]))

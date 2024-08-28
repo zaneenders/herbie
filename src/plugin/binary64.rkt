@@ -88,6 +88,7 @@
              (provide name)
              (define-operator-impl (name [var : itype] ...) binary64
                #:spec spec
+               #:fpcore (! :precision binary64 (op var ...))
                #:fl (ffi/proc cname #f : citype ... -> _double #:fail (const #f))
                #:optional))))]
     [(_ name (op var ...)) #'(define-libm-impl/binary64 name (op var ...) #:spec (op var ...))]))

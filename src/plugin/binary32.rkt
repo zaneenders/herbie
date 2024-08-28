@@ -91,6 +91,7 @@
              (provide name)
              (define-operator-impl (name [var : itype] ...) binary32
                #:spec spec
+               #:fpcore (! :precision binary32 (op var ...))
                #:fl (ffi/proc cname #f : citype ... -> _float #:fail (const #f))
                #:optional))))]
     [(_ name (op var ...)) #'(define-libm-impl/binary32 name (op var ...) #:spec (op var ...))]))
@@ -144,14 +145,12 @@
   [tgamma.f32 (tgamma x)]
   [trunc.f32 (trunc x)])
 
-(define-operator-impl (binary64->binary32 [x : binary64])
-                      binary32
-                      #:spec x
-                      #:fpcore (! :precision binary32 (cast x))
-                      #:fl (curryr ->float32))
+(define-operator-impl (binary64->binary32 [x : binary64]) binary32
+  #:spec x
+  #:fpcore (! :precision binary32 (cast x))
+  #:fl (curryr ->float32))
 
-(define-operator-impl (binary32->binary64 [x : binary32])
-                      binary64
-                      #:spec x
-                      #:fpcore (! :precision binary64 (cast x))
-                      #:fl identity)
+(define-operator-impl (binary32->binary64 [x : binary32]) binary64
+  #:spec x
+  #:fpcore (! :precision binary64 (cast x))
+  #:fl identity)

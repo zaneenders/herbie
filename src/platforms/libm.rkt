@@ -3,7 +3,9 @@
 ;;; The default platform:
 ;;; C/C++ on Linux with a full libm
 
-(require "../plugin.rkt")
+(require "../plugin.rkt"
+         "../plugin/bool.rkt"
+         "../plugin/binary64.rkt")
 
 (define fl-move-cost 0.1522809999999996)
 (define move-cost fl-move-cost)

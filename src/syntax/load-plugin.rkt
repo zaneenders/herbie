@@ -1,6 +1,8 @@
 #lang racket
+
 (require setup/getinfo
          racket/runtime-path)
+
 (require "../config.rkt"
          "platform.rkt"
          "types.rkt")
@@ -9,9 +11,6 @@
          load-herbie-plugins
          make-debug-context)
 
-;; Builtin plugins
-(define-runtime-module-path fallback-plugin "../platforms/fallback.rkt")
-
 ;; Builtin platforms
 (define-runtime-module-path c-platform "../platforms/libm.rkt")
 (define-runtime-module-path default-platform "../platforms/default.rkt")
@@ -19,9 +18,6 @@
 
 ; Automatically loads default representations and platforms
 (define (load-herbie-builtins)
-  ;; Load in all plugins
-  ;; Warning: the order here is important!
-  (dynamic-require fallback-plugin #f)
   ;; Load all platforms
   (dynamic-require c-platform #f)
   (dynamic-require default-platform #f)

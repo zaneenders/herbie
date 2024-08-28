@@ -9,7 +9,8 @@
          ; make sure they're loaded
          "plugin/bool.rkt"
          "plugin/binary64.rkt"
-         "plugin/binary32.rkt")
+         "plugin/binary32.rkt"
+         "plugin/fallback.rkt")
 
 (provide define-type
          ; representations
