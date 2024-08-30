@@ -177,7 +177,7 @@
            ; Both R(x + y) and R(x) + R(y) underflow
            ; This causes the condition number to jump up,
            ; with no real error
-           [(underflow? xlog) #f]
+           [(underflow? slog) #f]
 
            ; nan rescue:
            ; R(+-inf) + R(-+inf) = nan, but should actually
