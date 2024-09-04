@@ -184,10 +184,14 @@
                (loop #'(rest ...) impls costs reprs repr-costs)])]
            [(#:literal [repr cost] rest ...)
             (loop #'(rest ...) impls costs (cons #'repr reprs) (cons #'cost repr-costs))]
-           [(#:literals) (oops! "expected literals list after keyword `#:literals`" stx)]
+           [(#:literal) (oops! "expected literals list after keyword `#:literals`" stx)]
            [([impl cost] rest ...)
             (loop #'(rest ...) (cons #'impl impls) (cons #'cost costs) reprs repr-costs)]
-           [(impl rest ...) (loop #'(rest ...) (cons #'impl impls) (cons #f costs) reprs repr-costs)]
+           [(impl rest ...)
+            (let ([impl #'impl])
+              (when (keyword? (syntax-e impl))
+                (oops! "unexpected keyword" impl))
+              (loop #'(rest ...) (cons impl impls) (cons #f costs) reprs repr-costs))]
            [_ (oops! "bad syntax")])))]
     [_ (oops! "bad syntax")]))
 

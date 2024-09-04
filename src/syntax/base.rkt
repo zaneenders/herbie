@@ -48,7 +48,7 @@
   #:transparent
   #:methods gen:custom-write
   [(define (write-proc repr port mode)
-     (fprintf port "#<representation ~a>" (representation-name repr)))])
+     (fprintf port "#<representation:~a>" (representation-name repr)))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Context": type signature with names inputs
@@ -72,7 +72,10 @@
 ;;  - output type : type-name?
 ;;  - deprecated flag : boolean?
 
-(struct operator (name itype otype deprecated))
+(struct operator (name itype otype deprecated)
+        #:methods gen:custom-write
+        [(define (write-proc op port mode)
+          (fprintf port "#<operator:~a>" (operator-name op)))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Operator implementations": floating-point operator
@@ -87,7 +90,10 @@
 ;;  - FPCore representation : expr?
 ;;  - floating-point implementation : procedure?
 
-(struct operator-impl (name ctx spec fpcore fl))
+(struct operator-impl (name ctx spec fpcore fl)
+        #:methods gen:custom-write
+        [(define (write-proc op port mode)
+          (fprintf port "#<operator-impl:~a>" (operator-impl-name op)))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Literal": numerical constant with a representation
