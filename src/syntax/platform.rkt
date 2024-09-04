@@ -259,10 +259,10 @@
 ;; Set subtract for platforms.
 (define platform-subtract
   (make-set-operation (λ (impls . implss)
-                        (hash-filter-keys impls
-                                          (lambda (name)
-                                            (not (for/or ([impls (in-list implss)])
-                                                   (hash-has-key? impls name))))))))
+                        (for/fold ([impls impls])
+                                  ([(name _) (in-hash impls)]
+                                   #:when (ormap (lambda (impls) (hash-has-key? impls name)) implss))
+                          (hash-remove impls name)))))
 
 ;; Coarse-grained filters on platforms.
 (define ((make-platform-filter repr-supported? op-supported?) pform)

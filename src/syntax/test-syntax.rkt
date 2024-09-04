@@ -38,14 +38,9 @@
   (for ([(pt out) (in-dict sin-vals)])
     (check-equal? (sin-proc pt) out (format "sin(~a) = ~a" pt out)))
 
-  (define-platform extensions
-    [log1pmd.f64 1]
-    [fast-sin.f64 1])
+  (define-platform extensions [log1pmd.f64 1] [fast-sin.f64 1])
 
-  (*active-platform*
-    (platform-union
-      (*active-platform*)
-      extensions))
+  (*active-platform* (platform-union (*active-platform*) extensions))
 
   ; get-fpcore-impl
 
