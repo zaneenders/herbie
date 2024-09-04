@@ -65,7 +65,7 @@
   (match-define (logfl b sb eb) B)
   (define ea_ (max ea eb))
   (define eb_ (min ea eb))
-  (logfl (+ a b) sa (+ ea (fllog2 (abs (+ 1 (flexp2 (- eb ea))))))))
+  (logfl (+ a b) sa (+ ea_ (fllog2 (abs (+ 1 (flexp2 (- eb_ ea_))))))))
 
 (define (log- A B)
   (match-define (logfl a sa ea) A)
@@ -90,7 +90,7 @@
 
 (define (logln A)
   (match-define (logfl a sa ea) A)
-  (logfl (log a) sa (log ea)))
+  (logfl (log a) sa (fllog2 (abs (log a)))))
 
 (define (logexp A)
   (match-define (logfl a sa ea) A)
