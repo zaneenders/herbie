@@ -1,7 +1,5 @@
 #lang racket
 
-(require math/bigfloat)
-
 (require "../utils/common.rkt"
          "../utils/errors.rkt"
          "base.rkt")

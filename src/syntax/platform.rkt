@@ -67,7 +67,7 @@
   (define reprs (make-hash)) ; name -> repr
   (define repr->cost (make-hasheq)) ; repr -> cost
   ; process implementations
-  (for ([(impl cost) (in-dict impl&costs)])
+  (for ([(impl cost) (in-dict impl&costs)] #:when impl)
     (define name (operator-impl-name impl))
     (define cost* (or cost default-cost))
     (when (hash-has-key? impls name)
@@ -130,10 +130,10 @@
                   [repr-costs '()])
          (syntax-case cs ()
            [()
-            (let ([platform-id #'id])
-              (unless (identifier? platform-id)
-                (oops! "platform id is not a valid identifier" platform-id))
-              (with-syntax ([platform-id platform-id]
+            (let ([id #'id])
+              (unless (identifier? id)
+                (oops! "expected identifier" id))
+              (with-syntax ([id id]
                             [(impls ...) (reverse impls)]
                             [(costs ...) (reverse costs)]
                             [(reprs ...) reprs]
@@ -143,14 +143,20 @@
                             [optional? optional?])
                 #'
                 (begin
-                  (for ([name (in-list '(impls ...))]
-                        [impl (in-list (list impls ...))])
-                    (unless impl
-                      (if optional?
-                          (raise-herbie-missing-error "Missing implementation ~a required by platform"
-                                                      impl)
-                          (warn 'platform "platform has missing optional implementations: ~a" name))))
-                  (define platform-id
+                  (for/fold ([missing '()]
+                             #:result (unless (null? missing)
+                                        (if optional?
+                                            (warn 'platform
+                                                  "platform has missing optional implementations: ~a"
+                                                  missing)
+                                            (raise-herbie-missing-error
+                                             "Missing implementations ~a required by platform"
+                                             missing))))
+                            ([name (in-list '(impls ...))]
+                             [impl (in-list (list impls ...))]
+                             #:unless impl)
+                    (cons name missing))
+                  (define id
                     (make-platform (list (cons impls costs) ...)
                                    (list (cons reprs repr-costs) ...)
                                    ;    #:optional? optional?
