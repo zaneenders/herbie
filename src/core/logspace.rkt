@@ -3,7 +3,8 @@
 (require math/base
          math/flonum
          racket/struct
-         "../syntax/syntax.rkt")
+         "../syntax/syntax.rkt"
+                  "../syntax/types.rkt")
 
 (provide (all-defined-out))
 
@@ -188,7 +189,6 @@
   (match expr
     [(struct literal (value prec)) (flonum->logfl (if (flonum? value) value (exact->inexact value)))]
     [(list 'if c t f) (error 'spec->logfl "if not supported")]
+    [(list (or 'PI.f64 'PI.f32 'E.f64 'E.f32)) (flonum->logfl ((impl-info (first expr) 'fl)))]
     [(list op args ...) (cons (op->logop op) (map expr->logfl args))]
     [sym sym]))
-
-;#<logfl: +inf.0 #t 550.5604158267413>
