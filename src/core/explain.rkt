@@ -492,9 +492,9 @@
            ;[(and (bf< y -1.bf) (infinite? x^y) (bfinfinite? subexpr-val)) #f]
            [(and (< yfl -1.0) (underflow? slog)) #f]
 
-           [(and (underflow? x) (<= se MAX-EXP)) (mark-erroneous! subexpr 'uflow-rescue)]
+           [(and (underflow? xlog) (<= se MAX-EXP)) (mark-erroneous! subexpr 'uflow-rescue)]
 
-           [(and (overflow? x) (<= se MAX-EXP)) (mark-erroneous! subexpr 'oflow-rescue)]
+           [(and (overflow? xlog) (<= se MAX-EXP)) (mark-erroneous! subexpr 'oflow-rescue)]
 
            [(and (or (> cond-x 100) (> cond-y 100)) (not (constant? y-ex)))
             (mark-erroneous! subexpr 'sensitivity)]
