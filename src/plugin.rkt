@@ -6,37 +6,31 @@
          (submod "syntax/syntax.rkt" internals)
          (submod "syntax/platform.rkt" internals)
          (submod "core/rules.rkt" internals)
-         ; make sure they're loaded
+         ; make sure they're in the dependency graph
+         ; when importing `herbie/plugin`
          "plugin/bool.rkt"
          "plugin/binary64.rkt"
          "plugin/binary32.rkt"
          "plugin/fallback.rkt")
 
 (provide define-type
-         ; representations
          define-representation
-         (struct-out representation)
-         get-representation
-         make-representation
-         rename-representation
-         ; operators
-         define-operator
-         register-operator!
-         ; operator implementations
          define-operator-impl
-         make-operator-impl
-         register-conversion-generator!
-         ; rulesets
+         define-operator
          define-ruleset
          define-ruleset*
          register-ruleset!
-         ; platform
+         register-conversion-generator!
+         register-operator!
+         (struct-out representation)
+         make-representation
+         rename-representation
+         get-representation
+         warn
          define-platform
          get-platform
          register-platform!
          platform-union
          platform-intersect
          platform-subtract
-         platform-filter
-         ; misc
-         warn)
+         platform-filter)

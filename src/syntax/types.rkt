@@ -121,8 +121,7 @@
 
 ;; Returns all representations in the current platform.
 (define (all-representations)
-  (define reprs (platform-reprs (*active-platform*)))
-  (hash-values reprs #t))
+  (hash-values (platform-reprs (*active-platform*))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Context interface
