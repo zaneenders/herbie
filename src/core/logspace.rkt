@@ -121,6 +121,26 @@
   (match-define (logfl a sa ea) A)
   (logfl (expt a (/ 1 3)) (>= a 0.0) (/ ea 3.0)))
 
+(define (log> A B)
+  (match-define (logfl a sa ea) A)
+  (match-define (logfl b sb eb) B)
+  (> a b))
+
+(define (log< A B)
+  (match-define (logfl a sa ea) A)
+  (match-define (logfl b sb eb) B)
+  (< a b))
+
+(define (log>= A B)
+  (match-define (logfl a sa ea) A)
+  (match-define (logfl b sb eb) B)
+  (>= a b))
+
+(define (log<= A B)
+  (match-define (logfl a sa ea) A)
+  (match-define (logfl b sb eb) B)
+  (<= a b))
+
 (define (logop? symbol)
   (match symbol
     ['log+ #true]
@@ -136,6 +156,10 @@
     ['logsqrt #true]
     ['logcbrt #true]
     ['log-neg #true]
+    ['log> #true]
+    ['log>= #true]
+    ['log< #true]
+    ['log<= #true]
     [_ #false]))
 
 (define (logop symbol)
@@ -153,6 +177,10 @@
     ['logsqrt logsqrt]
     ['logcbrt logcbrt]
     ['log-neg log-neg]
+    ['log> log>]
+    ['log>= log>=]
+    ['log< log<]
+    ['log<= log<=]
     [_ (error 'logop symbol)]))
 
 (define (op->logop op)
@@ -183,12 +211,20 @@
     ['sqrt.f32 'logsqrt]
     ['cbrt.f32 'logcbrt]
     ['neg.f32 'log-neg]
+    ['>.f64 'log>]
+    ['>.f32 'log>]
+    ['>=.f64 'log>=]
+    ['>=.f32 'log>=]
+    ['<.f64 'log<]
+    ['<.f64 'log<]
+    ['<=.f32 'log<=]
+    ['<=.f32 'log<=]
+    ['if 'if]
     [_ (error 'op->logop op)]))
 
 (define (expr->logfl expr)
   (match expr
     [(struct literal (value prec)) (flonum->logfl (if (flonum? value) value (exact->inexact value)))]
-    [(list 'if c t f) (error 'spec->logfl "if not supported")]
     [(list (or 'PI.f64 'PI.f32 'E.f64 'E.f32)) (flonum->logfl ((impl-info (first expr) 'fl)))]
     [(list op args ...) (cons (op->logop op) (map expr->logfl args))]
     [sym sym]))

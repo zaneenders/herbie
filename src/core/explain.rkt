@@ -126,7 +126,8 @@
     (for/list ([subexpr (in-list subexprs-list)])
       (define subexpr-val (exacts-ref subexpr))
       (define slog (logfls-ref subexpr))
-      (match-define (logfl sfl ss se) slog)
+      ; (match-define (logfl sfl ss se) slog)
+      (define se (if (boolean? slog) '() (logfl-e slog)))
 
       (define (update-flow-hash flow-hash pred? . children)
         (define child-set
