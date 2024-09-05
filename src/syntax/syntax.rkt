@@ -44,9 +44,6 @@
 ;; Real operators
 ;; Pure mathematical operations
 
-;; Table of every real operator
-(define operators (make-hasheq))
-
 ;; Checks if an operator has been registered.
 (define (operator-exists? op)
   (hash-has-key? operators op))

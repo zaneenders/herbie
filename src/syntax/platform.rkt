@@ -10,6 +10,9 @@
 
 (provide define-platform
          get-platform
+         platform-name
+         platform-reprs
+         platform-impls
          *active-platform*
          ;; Platform API
          ;; Operator sets
@@ -32,17 +35,6 @@
            platform-intersect
            platform-subtract
            platform-filter))
-
-;;; Platforms describe a set of representations and operator implementations
-;;; Herbie should use during its improvement loop. Platforms are just
-;;; a "type signature" - they provide no implementations of floating-point
-;;; operations (see plugins). During runtime, platforms will verify if
-;;; every listed feature is actually loaded by Herbie and will panic if
-;;; implemenations are missing. Unlike plugins, only one platform may be
-;;; active at any given time and platforms may be activated or deactivated.
-
-;; Platform table, mapping name to platform
-(define platforms (make-hash))
 
 ;; Looks up a platform by identifier.
 ;; Panics if no platform is found.
@@ -67,7 +59,8 @@
   (define reprs (make-hash)) ; name -> repr
   (define repr->cost (make-hasheq)) ; repr -> cost
   ; process implementations
-  (for ([(impl cost) (in-dict impl&costs)] #:when impl)
+  (for ([(impl cost) (in-dict impl&costs)]
+        #:when impl)
     (define name (operator-impl-name impl))
     (define cost* (or cost default-cost))
     (when (hash-has-key? impls name)

@@ -1,6 +1,8 @@
 #lang racket
 
 (provide types
+         operators
+         platforms
          type-name?
          define-type
          *context*
@@ -73,9 +75,12 @@
 ;;  - deprecated flag : boolean?
 
 (struct operator (name itype otype deprecated)
-        #:methods gen:custom-write
-        [(define (write-proc op port mode)
-          (fprintf port "#<operator:~a>" (operator-name op)))])
+  #:methods gen:custom-write
+  [(define (write-proc op port mode)
+     (fprintf port "#<operator:~a>" (operator-name op)))])
+
+;; Table of every real operator
+(define operators (make-hasheq))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Operator implementations": floating-point operator
@@ -91,9 +96,9 @@
 ;;  - floating-point implementation : procedure?
 
 (struct operator-impl (name ctx spec fpcore fl)
-        #:methods gen:custom-write
-        [(define (write-proc op port mode)
-          (fprintf port "#<operator-impl:~a>" (operator-impl-name op)))])
+  #:methods gen:custom-write
+  [(define (write-proc op port mode)
+     (fprintf port "#<operator-impl:~a>" (operator-impl-name op)))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; "Literal": numerical constant with a representation
@@ -131,6 +136,9 @@
      (if (platform-name p)
          (fprintf port "#<platform:~a>" (platform-name p))
          (fprintf port "#<platform>")))])
+
+;; Platform table, mapping name to platform
+(define platforms (make-hash))
 
 ;; Current platform
 (define *active-platform* (make-parameter #f))
