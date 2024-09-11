@@ -4,7 +4,7 @@
          math/flonum
          racket/struct
          "../syntax/syntax.rkt"
-                  "../syntax/types.rkt")
+          "../syntax/types.rkt")
 
 (provide (all-defined-out))
 
@@ -152,8 +152,6 @@
 ; (define (logceil A)
 ;   (match-define (logfl a sa ea) A)
 ;   (logfl (ceil a) sa (fllog2 (abs (ceil a)))))
-
-
 
 (define (logop? symbol)
   (match symbol

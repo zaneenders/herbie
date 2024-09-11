@@ -183,7 +183,8 @@
            ; nan rescue:
            ; R(+-inf) + R(-+inf) = nan, but should actually
            ; be inf
-           [(and (overflow? xlog) (overflow? ylog) (not (same-sign?* xfl yfl))) (mark-erroneous! subexpr 'nan-rescue)]
+           [(and (overflow? xlog) (overflow? ylog) (not (same-sign?* xfl yfl)))
+            (mark-erroneous! subexpr 'nan-rescue)]
 
            ; inf rescue:
            ; R(inf) + y = non inf value (inf rescue)
