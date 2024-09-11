@@ -178,7 +178,7 @@
            ; Both R(x + y) and R(x) + R(y) underflow
            ; This causes the condition number to jump up,
            ; with no real error
-           [(underflow? slog) #f]
+           ; [(underflow? slog) #f]
 
            ; nan rescue:
            ; R(+-inf) + R(-+inf) = nan, but should actually
@@ -219,7 +219,7 @@
            ; Condition number hallucination:
            ; When x - y correctly underflows, CN is high
            ; even though the answer is correct
-           [(underflow? slog) #f]
+           ; [(underflow? slog) #f]
 
            ; nan rescue:
            ; inf - inf = nan but should actually get an inf

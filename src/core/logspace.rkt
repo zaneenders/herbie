@@ -141,6 +141,20 @@
   (match-define (logfl b sb eb) B)
   (<= a b))
 
+; (define (logabs A)
+;   (match-define (logfl a sa ea) A)
+;   (logfl (abs a) #true ea))
+
+; (define (logfloor A)
+;   (match-define (logfl a sa ea) A)
+;   (logfl (floor a) sa (fllog2 (abs (floor a)))))
+
+; (define (logceil A)
+;   (match-define (logfl a sa ea) A)
+;   (logfl (ceil a) sa (fllog2 (abs (ceil a)))))
+
+
+
 (define (logop? symbol)
   (match symbol
     ['log+ #true]
