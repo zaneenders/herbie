@@ -10,7 +10,10 @@
          "../syntax/types.rkt"
          "../utils/common.rkt"
          "../config.rkt"
-         "../utils/timeline.rkt")
+         "../utils/timeline.rkt"
+         "rival.rkt"
+         "../syntax/sugar.rkt"
+         "points.rkt")
 
 (provide (struct-out egg-runner)
          typed-egg-extractor
@@ -252,15 +255,11 @@
       [(list op args ...) (cons op (map loop args))])))
 
 (define (flatten-let expr)
-  (let loop ([expr expr]
-             [env (hash)])
+  (let loop ([expr expr] [env (hash)])
     (match expr
       [(? number?) expr]
       [(? symbol?) (hash-ref env expr expr)]
-      [`(let (,var
-              ,term)
-          ,body)
-       (loop body (hash-set env var (loop term env)))]
+      [`(let (,var ,term) ,body) (loop body (hash-set env var (loop term env)))]
       [`(,op ,args ...) (cons op (map (curryr loop env) args))])))
 
 ;; Converts an S-expr from egg into one Herbie understands
@@ -268,8 +267,7 @@
 ;; we may process mixed spec/impl expressions;
 ;; only need `type` to correctly interpret numbers
 (define (egg-parsed->expr expr rename-dict type)
-  (let loop ([expr expr]
-             [type type])
+  (let loop ([expr expr] [type type])
     (match expr
       [(? number?) (if (representation? type) (literal expr (representation-name type)) expr)]
       [(? symbol?)
@@ -442,8 +440,7 @@
      (define itype (dict-ref (rule-itypes ru) input))
      (unless (type-name? itype)
        (error 'rule->egg-rules "expansive rules over impls is unsound ~a" input))
-     (for/list ([op (all-operators)]
-                #:when (eq? (operator-info op 'otype) itype))
+     (for/list ([op (all-operators)] #:when (eq? (operator-info op 'otype) itype))
        (define itypes (operator-info op 'itype))
        (define vars (map (lambda (_) (gensym)) itypes))
        (rule (sym-append (rule-name ru) '-expand- op)
@@ -640,8 +637,7 @@
   (define (check-typed! dirty?-vec)
     (define dirty? #f)
     (define dirty?-vec* (make-vector n #f))
-    (for ([id (in-range n)]
-          #:when (vector-ref dirty?-vec id))
+    (for ([id (in-range n)] #:when (vector-ref dirty?-vec id))
       (unless (vector-ref typed? id)
         (define eclass (vector-ref eclasses id))
         (when (ormap enode-typed? eclass)
@@ -690,8 +686,7 @@
   ; rebuild eclass vector
   ; transform each eclass from a list to a vector
   (define eclasses* (make-vector n* #f))
-  (for ([id (in-range n)]
-        #:when (vector-ref remap id))
+  (for ([id (in-range n)] #:when (vector-ref remap id))
     (define eclass (vector-ref eclasses id))
     (vector-set! eclasses*
                  (vector-ref remap id)
@@ -712,8 +707,7 @@
   ; rebuild the eclass type map
   (define types*
     (for/vector #:length n*
-                ([id (in-range n)]
-                 #:when (vector-ref remap id))
+                ([id (in-range n)] #:when (vector-ref remap id))
       (vector-ref types id)))
 
   (values eclasses* types* egg-id->id*))
@@ -807,8 +801,7 @@
     (define dirty? #f)
     (define dirty?-vec* (make-vector n #f))
     (define changed?-vec* (make-vector n #f))
-    (for ([id (in-range n)]
-          #:when (vector-ref dirty?-vec id))
+    (for ([id (in-range n)] #:when (vector-ref dirty?-vec id))
       (define eclass (vector-ref eclasses id))
       (when (eclass-proc analysis changed?-vec iter eclass id)
         ; eclass analysis was updated: need to revisit the parents
@@ -1104,9 +1097,7 @@
       (define-values (egg-graph* iteration-data) (egraph-run-rules egg-graph egg-rules params))
 
       ; get cost statistics
-      (for/fold ([time 0])
-                ([iter (in-list iteration-data)]
-                 [i (in-naturals)])
+      (for/fold ([time 0]) ([iter (in-list iteration-data)] [i (in-naturals)])
         (define cnt (iteration-data-num-nodes iter))
         (define cost (apply + (map (λ (id) (egraph-get-cost egg-graph* id i)) root-ids)))
         (define new-time (+ time (iteration-data-time iter)))
@@ -1194,35 +1185,108 @@
   (match cmd
     [`(single . ,extractor) ; single expression extraction
      (define regraph (make-regraph egg-graph))
-     
-     (displayln "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
      (define exprs '())
-     (define values (make-hasheq))
+     (define values (make-hash))
      (define extract-id (extractor regraph))
      (define reprs (egg-runner-reprs runner))
-     (define l (for/list ([id (in-list root-ids)]
-                [repr (in-list reprs)])
-                (define eclass (regraph-extract-variants regraph extract-id id repr))
-                (cons exprs (first eclass))
-                (regraph-extract-best regraph extract-id id repr)
-       ))
-      (for ([expr exprs])
-            (define output (real-apply (make-real-compiler  ctx) pt))
-            (if (hash-has-key? values (cdr ouput))
-                (displayln "found double")
-                (hash-set! (cdr output) (car output))))
-      l
-       ]
+
+     (define l
+       (for/list ([id (in-list root-ids)] ; iterate through eclasses
+                  [repr (in-list reprs)])
+         (define eclass (regraph-extract-variants regraph extract-id id repr)) ; define an eclass
+         (set! exprs (cons (first eclass) exprs)) ;add an expression from each eclass
+         (regraph-extract-best regraph extract-id id repr)))
+
+     (define (strip-approx prog) ;helper function to get expression
+       (match prog
+         [(approx _ impl) (strip-approx impl)]
+         [(list op args ...) (cons op (map strip-approx args))]
+         [_ prog]))
+     (define duplicatesHash (make-hash))
+     (define duplicates (list))
+     (for ([expr exprs])
+       (if (hash-has-key? duplicatesHash expr)
+           (set! duplicates (cons expr duplicates))
+           (hash-set! duplicatesHash expr 0)))
+     ;(displayln (format "duplicates:~a" duplicates))
+     (remove-duplicates exprs)
+
+     (define (run-rival pts)
+       (for ([pt pts])
+         ;(displayln pt)
+         (define var-hash (make-hash))
+         (for ([key (hash-keys var-hash)])
+           (hash-set! hash key 0))
+         (for ([expr exprs])
+           (set! expr (strip-approx expr))
+           (define repr (get-representation 'binary64))
+           (define vars (free-variables expr))
+           (define ctx (context vars repr (map (const repr) vars)))
+           (define compiler
+             (make-real-compiler (list (prog->spec expr)) (list ctx))) ; Create variables
+           (define list-pts (list))
+           (for ([var vars])
+             (hash-ref var-hash
+                       var
+                       (lambda ()
+                         (hash-set! var-hash var (car pt))
+                         (set! pt (cdr pt))
+                         "0")))
+           (for ([var vars])
+             (set! list-pts (cons (hash-ref var-hash var) list-pts)))
+           (define-values (status value) (real-apply compiler (reverse list-pts)))
+           (if (and (hash-has-key? values expr) (equal? status 'valid))
+               (hash-set! values expr (cons value (hash-ref values expr)))
+               (hash-set! values expr (list value))))))
+
+     (if (not (equal? (*pcontext*) #f))
+         (run-rival (for/list ([(pt ex) (in-pcontext (*pcontext*))])
+                      pt))
+         (run-rival (list (list 91103.09230133967
+                                1.4903069331671184e-261
+                                1.730184674933312e-88
+                                6.8792919307949795e-242
+                                1.4903069331671184))))
+
+     (for ([val-point (hash-map values cons)])
+       (for ([val-point2 (hash-map values cons)])
+       
+         (define prog `(-.f64))
+         (set! prog (cons (car val-point) prog))
+         (set! prog (cons (car val-point2) prog))
+         (set! prog (reverse prog))
+
+         (define expr1 (car val-point))
+         (define expr2 (car val-point2))
+
+         (define repr (get-representation 'binary64))
+         (define vars
+           (remove-duplicates (append (free-variables (car val-point))
+                                      (free-variables (car val-point2)))))
+         (define ctx (context vars repr (map (const repr) vars)))
+         (define pts (list 1 10 20 30 40))
+
+         (define-values (status diff)
+           (real-apply (make-real-compiler (list (prog->spec prog)) (list ctx)) pts))
+          ; Checks both status and val-points
+         (when (and (equal? (cdr val-point) (cdr val-point2))
+                    (not (equal? (car val-point) (car val-point2))))
+           (display "prog:")
+           (displayln prog)
+           (display "diff:")
+           (displayln diff)
+           (if (equal? (first diff) -0.0)
+               (displayln (format "Expr 1: ~a Expr 2: ~a" (car val-point) (car val-point2)));insert match statement to check for patterns ex- x+0 -> x
+               (displayln "NO")))))
+     l]
     [`(multi . ,extractor) ; multi expression extraction
      (define regraph (make-regraph egg-graph))
      (define extract-id (extractor regraph))
      (define reprs (egg-runner-reprs runner))
-     (for/list ([id (in-list root-ids)]
-                [repr (in-list reprs)])
+     (for/list ([id (in-list root-ids)] [repr (in-list reprs)])
        (regraph-extract-variants regraph extract-id id repr))]
     [`(proofs . ((,start-exprs . ,end-exprs) ...)) ; proof extraction
-     (for/list ([start (in-list start-exprs)]
-                [end (in-list end-exprs)])
+     (for/list ([start (in-list start-exprs)] [end (in-list end-exprs)])
        (unless (egraph-expr-equal? egg-graph start end ctx)
          (error 'run-egg
                 "cannot find proof; start and end are not equal.\n start: ~a \n end: ~a"
@@ -1233,7 +1297,6 @@
          (error 'run-egg "proof extraction failed between`~a` and `~a`" start end))
        proof)]
     [`(equal? . ((,start-exprs . ,end-exprs) ...)) ; term equality?
-     (for/list ([start (in-list start-exprs)]
-                [end (in-list end-exprs)])
+     (for/list ([start (in-list start-exprs)] [end (in-list end-exprs)])
        (egraph-expr-equal? egg-graph start end ctx))]
     [_ (error 'run-egg "unknown command `~a`\n" cmd)]))

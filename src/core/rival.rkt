@@ -67,6 +67,7 @@
 (define (real-apply compiler pt)
   (match-define (real-compiler _ vars var-reprs _ _ machine) compiler)
   (define start (current-inexact-milliseconds))
+  ;;;;;(displayln pt)
   (define pt*
     (for/vector #:length (length vars)
                 ([val (in-list pt)]

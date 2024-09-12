@@ -49,6 +49,7 @@
         (and (= major 8) (= minor 2) (zero? (string-length rest))))))
 
 (define (sample-pcontext vars specification precondition)
+  ;(displayln (*context*))
   (define sample (sample-points precondition (list specification) (list (*context*))))
   (match-define (cons domain pts+exs) sample)
   (cons domain (apply mk-pcontext pts+exs)))

@@ -114,7 +114,7 @@
   (register-representation! 'name 'type repr? args ...))
 
 ;; Contexts
-
+;;;;;;;;;;;;;;;;;;;;;;;;;
 (struct context (vars repr var-reprs) #:transparent)
 
 ;; Current context
