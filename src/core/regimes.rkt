@@ -224,46 +224,48 @@
   ;; Given one of these lists, this function tries to add another splitindices to each cse.
   (define (add-splitpoint sp-prev)
     ;; If there's not enough room to add another splitpoint, just pass the sp-prev along.
-    (for/vector #:length num-points ([point-idx (in-naturals)] [point-entry (in-vector sp-prev)])
+    (for/vector #:length num-points
+                ([point-idx (in-naturals)]
+                 [point-entry (in-vector sp-prev)])
       ;; We take the CSE corresponding to the best choice of previous split point.
       ;; The default, not making a new split-point, gets a bonus of min-weight
-      (let ([acost (- (cse-cost point-entry) min-weight)] [aest point-entry])
-        (for ([prev-split-idx (in-range 0 point-idx)] [prev-entry (in-vector sp-prev)]
+      (let ([acost (- (cse-cost point-entry) min-weight)]
+            [aest point-entry])
+        (for ([prev-split-idx (in-range 0 point-idx)]
+              [prev-entry (in-vector sp-prev)]
               #:when (can-split? (si-pidx (car (cse-indices prev-entry)))))
           ;; For each previous split point, we need the best candidate to fill the new regime
-          (let ([best #f] [bcost #f])
-            (for ([cidx (in-naturals)] [psum (in-list psums)])
-              (let ([cost (- (vector-ref psum point-idx)
-                             (vector-ref psum prev-split-idx))])
+          (let ([best #f]
+                [bcost #f])
+            (for ([cidx (in-naturals)]
+                  [psum (in-list psums)])
+              (let ([cost (- (vector-ref psum point-idx) (vector-ref psum prev-split-idx))])
                 (when (or (not best) (< cost bcost))
                   (set! bcost cost)
                   (set! best cidx))))
             (when (and (< (+ (cse-cost prev-entry) bcost) acost))
               (set! acost (+ (cse-cost prev-entry) bcost))
-              (set! aest (cse acost (cons (si best (+ point-idx 1))
-                                          (cse-indices prev-entry)))))))
+              (set! aest (cse acost (cons (si best (+ point-idx 1)) (cse-indices prev-entry)))))))
         aest)))
 
   ;; We get the initial set of cse's by, at every point-index,
   ;; accumulating the candidates that are the best we can do
   ;; by using only one candidate to the left of that point.
   (define initial
-    (for/vector #:length num-points ([point-idx (in-range num-points)])
+    (for/vector #:length num-points
+                ([point-idx (in-range num-points)])
       (argmin cse-cost
               ;; Consider all the candidates we could put in this region
               (map (λ (cand-idx cand-psums)
-                      (let ([cost (vector-ref cand-psums point-idx)])
-                        (cse cost (list (si cand-idx (+ point-idx 1))))))
+                     (let ([cost (vector-ref cand-psums point-idx)])
+                       (cse cost (list (si cand-idx (+ point-idx 1))))))
                    (range num-candidates)
                    psums))))
 
   ;; We get the final splitpoints by applying add-splitpoints as many times as we want
   (define final
     (let loop ([prev initial])
-      (let ([next (add-splitpoint prev)])
-        (if (equal? prev next)
-            next
-            (loop next)))))
+      (let ([next (add-splitpoint prev)]) (if (equal? prev next) next (loop next)))))
 
   ;; Extract the splitpoints from our data structure, and reverse it.
   (reverse (cse-indices (vector-ref final (- num-points 1)))))
