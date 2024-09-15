@@ -400,6 +400,7 @@
          (define x (exacts-ref x-ex))
          (define xlog (logfls-ref x-ex))
          (match-define (logfl xfl xs xe) xlog)
+         (define cond-num.l (logabs (log/ (lf 1.0) xlog)))
          (define cond-num (abs (/ 1.0 xfl)))
 
          (cond
@@ -530,7 +531,6 @@
       (define tset (hash-ref tcount-hash subexpr '()))
       (define opred (set-subtract pset tset))
       (define upred (set-subtract tset pset))
-
       (list (~a subexpr)
             (length tset)
             (length opred)

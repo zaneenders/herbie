@@ -4,7 +4,7 @@
          math/flonum
          racket/struct
          "../syntax/syntax.rkt"
-          "../syntax/types.rkt")
+         "../syntax/types.rkt")
 
 (provide (all-defined-out))
 
@@ -33,6 +33,8 @@
 (define (flonum->logfl n_f)
   (logfl n_f (>= n_f 0.0) (fllog2 (abs n_f))))
 
+(define lf flonum->logfl)
+
 (define (lf-normalize lf)
   (match-define (logfl x s e) lf)
   (if (or (nan? x) (zero? x) (infinite? x)) (logfl (set-sign s (flexp2 e)) s e) lf))
@@ -49,109 +51,118 @@
   (match-define (logfl x s e) xl)
   (and (zero? x) (infinite? e)))
 
-(define (log-neg A)
+(define (logneg A)
   (match-define (logfl a sa ea) A)
   (logfl (- a) (not sa) ea))
 
-; Given 2 log-float numbers a_l = (s_a, e_a) and b_l = (s_b, e_b),
-; let c_l = a_l ± b_l
-; then s_c = s_a,
-; and e_c = log|a_f ± b_f|
-;         = log|a_f(1 ± b_f/a_f)|
-;         = log|a_f| + log|1 ± b_f/a_f|
-;         = e_a + log|1 ± 2^(e_b - e_a)|
-(define (log+ A B)
+(define (log1p_2 x)
+  (/ (fllog1p x) (log 2)))
+
+(define (log=? A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (define ea_ (max ea eb))
-  (define eb_ (min ea eb))
-  (logfl (+ a b) sa (+ ea_ (fllog2 (abs (+ 1 (flexp2 (- eb_ ea_))))))))
-
-(define (log- A B)
-  (match-define (logfl a sa ea) A)
-  (match-define (logfl b sb eb) B)
-  (define ea_ (max ea eb))
-  (define eb_ (min ea eb))
-  (logfl (- a b) sa (+ ea_ (fllog2 (abs (- 1 (flexp2 (- eb_ ea_))))))))
-
-; Given 2 log-float numbers a_l = (s_a, e_a) and b_l = (s_b, e_b),
-; let c_l = a_l */ b_l
-; then s_c = s_a ⊻ s_b,
-; and e_a = e_a ± e_b
-(define (log* A B)
-  (match-define (logfl a sa ea) A)
-  (match-define (logfl b sb eb) B)
-  (logfl (* a b) (xor sa sb) (+ ea eb)))
-
-(define (log/ A B)
-  (match-define (logfl a sa ea) A)
-  (match-define (logfl b sb eb) B)
-  (logfl (* a b) (xor sa sb) (- ea eb)))
-
-(define (logln A)
-  (match-define (logfl a sa ea) A)
-  (logfl (log a) sa (fllog2 (abs (log a)))))
-
-(define (logexp A)
-  (match-define (logfl a sa ea) A)
-  (logfl (exp a) #true (* a (fllog2 euler.0))))
-
-(define (logexpt A B)
-  (match-define (logfl a sa ea) A)
-  (match-define (logfl b sb eb) B)
-  (logfl (expt a b) #true (* b ea)))
-
-(define (logsin A)
-  (match-define (logfl a sa ea) A)
-  (logfl (sin a) (>= (sin a) 0.0) (fllog2 (abs (sin a)))))
-
-(define (logcos A)
-  (match-define (logfl a sa ea) A)
-  (logfl (cos a) (>= (cos a) 0.0) (fllog2 (abs (cos a)))))
-
-(define (logtan A)
-  (match-define (logfl a sa ea) A)
-  (logfl (tan a) (>= (tan a) 0.0) (fllog2 (abs (tan a)))))
-
-(define (logsqrt A)
-  (match-define (logfl a sa ea) A)
-  (logfl (sqrt a) #true (/ ea 2.0)))
-
-(define (logcbrt A)
-  (match-define (logfl a sa ea) A)
-  (logfl (expt a (/ 1 3)) (>= a 0.0) (/ ea 3.0)))
+  (and (eq? sa sb) (= ea eb)))
 
 (define (log> A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (> a b))
-
-(define (log< A B)
-  (match-define (logfl a sa ea) A)
-  (match-define (logfl b sb eb) B)
-  (< a b))
+  (cond
+    ; Both positive
+    [(and sa sb) (> ea eb)]
+    ; Both Negative
+    [(and (not sa) (not sb)) (> eb ea)]
+    [else sa]))
 
 (define (log>= A B)
-  (match-define (logfl a sa ea) A)
-  (match-define (logfl b sb eb) B)
-  (>= a b))
+  (or (log=? A B) (log> A B)))
+
+(define (log< A B)
+  (not (log>= A B)))
 
 (define (log<= A B)
+  (not (log> A B)))
+
+(define (logmax A B)
+  (if (log>= A B) A B))
+
+(define (logmin A B)
+  (if (log<= A B) A B))
+
+(define (log+ A B)
+  (define P (logmax A B))
+  (define Q (logmin A B))
+  (match-define (logfl a sa ea) P)
+  (match-define (logfl b sb eb) Q)
+  (define x (- eb ea))
+  (define ec
+    (+ ea (if (not (xor sa sb)) (fllog2 (abs (+ 1 (flexp2 x)))) (fllog2 (abs (- 1 (flexp2 x)))))))
+  (logfl (+ a b) sa ec))
+
+(define (log- A B)
+  (log+ A (logneg B)))
+
+(define (log* A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (<= a b))
+  (logfl (* a b) (not (xor a b)) (+ ea eb)))
 
-; (define (logabs A)
-;   (match-define (logfl a sa ea) A)
-;   (logfl (abs a) #true ea))
+(define (log/ A B)
+  (match-define (logfl a sa ea) A)
+  (match-define (logfl b sb eb) B)
+  (logfl (/ a b) (not (xor a b)) (- ea eb)))
 
-; (define (logfloor A)
-;   (match-define (logfl a sa ea) A)
-;   (logfl (floor a) sa (fllog2 (abs (floor a)))))
+(define (logln A)
+  (match-define (logfl a sa ea) A)
+  (logfl (log a)
+    (>= ea 0.0)
+    (fllog2 (abs (* ea (log 2))))))
 
-; (define (logceil A)
-;   (match-define (logfl a sa ea) A)
-;   (logfl (ceil a) sa (fllog2 (abs (ceil a)))))
+(define (logexp A)
+  (match-define (logfl a sa ea) A)
+  (logfl (exp a)
+    #true
+    (* a (fllog2 euler.0))))
+
+(define (logsqrt A)
+  (match-define (logfl a sa ea) A)
+  (logfl (sqrt a)
+    #true
+    (/ ea 2.0)))
+
+(define (logcbrt A)
+  (match-define (logfl a sa ea) A)
+  (logfl (expt a (/ 1 3.0))
+    #true
+    (/ ea 3.0)))
+
+;; Maybe do some range reduction?
+(define (logcos A)
+  (match-define (logfl a sa ea) A)
+  (logfl (cos a)
+    (>= (cos a) 0.0)
+    (if (< ea -12)
+        (log1p_2 (/ (* a a) 2.0))
+        (fllog2 (abs (cos a))))))
+
+(define (logsin A)
+  (match-define (logfl a sa ea) A)
+  (logfl (sin a)
+    (>= (sin a) 0.0)
+    (if (< ea -17)
+        ea
+        (fllog2 (abs (sin a))))))
+
+(define (logtan A)
+  (match-define (logfl a sa ea) A)
+  (logfl (sin a)
+    (>= (sin a) 0.0)
+    (if (< ea -18)
+        ea
+        (fllog2 (abs (tan a))))))
+
+(define (logabs A)
+  (match-define (logfl a sa ea) A)
+  (logfl (abs a) #true ea))
 
 (define (logop? symbol)
   (match symbol
@@ -167,7 +178,7 @@
     ['logtan #true]
     ['logsqrt #true]
     ['logcbrt #true]
-    ['log-neg #true]
+    ['logneg #true]
     ['log> #true]
     ['log>= #true]
     ['log< #true]
@@ -182,13 +193,13 @@
     ['log/ log/]
     ['logln logln]
     ['logexp logexp]
-    ['logexpt logexpt]
+    ; ['logexpt logexpt]
     ['logsin logsin]
     ['logcos logcos]
     ['logtan logtan]
     ['logsqrt logsqrt]
     ['logcbrt logcbrt]
-    ['log-neg log-neg]
+    ['logneg logneg]
     ['log> log>]
     ['log>= log>=]
     ['log< log<]
@@ -209,7 +220,7 @@
     ['tan.f64 'logtan]
     ['sqrt.f64 'logsqrt]
     ['cbrt.f64 'logcbrt]
-    ['neg.f64 'log-neg]
+    ['neg.f64 'logneg]
     ['+.f32 'log+]
     ['-.f32 'log-]
     ['*.f32 'log*]
@@ -222,7 +233,7 @@
     ['tan.f32 'logtan]
     ['sqrt.f32 'logsqrt]
     ['cbrt.f32 'logcbrt]
-    ['neg.f32 'log-neg]
+    ['neg.f32 'logneg]
     ['>.f64 'log>]
     ['>.f32 'log>]
     ['>=.f64 'log>=]
