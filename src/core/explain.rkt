@@ -403,8 +403,6 @@
          (define cond-num.l (logabs (log/ (lf 1.0) xlog)))
          (define cond-num (abs (/ 1.0 xfl)))
 
-         (eprintf "~a ~a " pt xlog)
-
          (cond
            ; Condition number hallucination:
            ; Condition number is high when x = 1,
@@ -412,17 +410,17 @@
            ; [(and (bf= x 1.bf) (bfzero? subexpr-val)) #f]
 
            ; overflow rescue:
-           [(overflow? xlog) (eprintf "oflow\n") (mark-erroneous! subexpr 'oflow-rescue)]
+           [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
 
            ; underflow rescue:
-           [(underflow? xlog) (eprintf "uflow\n") (mark-erroneous! subexpr 'uflow-rescue)]
+           [(underflow? xlog) (mark-erroneous! subexpr 'uflow-rescue)]
 
            ; High Condition Number:
            ; CN(log, x) = |1 / log(x)|
-           [(> cond-num 100) (eprintf "sens\n") (mark-erroneous! subexpr 'sensitivity)]
-           [(> cond-num 32) (eprintf "maybe\n") (mark-maybe! subexpr 'sensitivity)]
+           [(> cond-num 100) (mark-erroneous! subexpr 'sensitivity)]
+           [(> cond-num 32) (mark-maybe! subexpr 'sensitivity)]
 
-           [else (eprintf "none\n") #f])]
+           [else #f])]
 
         [(list (or 'exp.f64 'exp.f32) x-ex)
          #:when (list? x-ex)
