@@ -1271,6 +1271,7 @@
           ; Checks both status and val-points
          (when (and (equal? (cdr val-point) (cdr val-point2))
                     (not (equal? (car val-point) (car val-point2))))
+          (displayln "__________________")
            (display "prog:")
            (displayln prog)
            (display "diff:")
