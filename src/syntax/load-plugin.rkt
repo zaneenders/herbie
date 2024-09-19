@@ -18,6 +18,7 @@
 ;; Builtin platforms
 (define-runtime-module-path c-platform "../platforms/libm.rkt")
 (define-runtime-module-path default-platform "../platforms/default.rkt")
+(define-runtime-module-path flonum-platform "../platforms/Flonum.rkt")
 (define-runtime-module-path math-platform "../platforms/math.rkt")
 
 ; Automatically loads default representations and platforms
@@ -32,6 +33,7 @@
   (dynamic-require c-platform #f)
   (dynamic-require default-platform #f)
   (dynamic-require math-platform #f)
+  (dynamic-require flonum-platform #f)
   ; activate the required platform
   (*active-platform* (get-platform (*platform-name*)))
   (activate-platform! (*active-platform*)))
