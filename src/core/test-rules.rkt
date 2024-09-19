@@ -13,8 +13,9 @@
          "../syntax/types.rkt"
          "compiler.rkt"
          "rival.rkt"
-         "sampling.rkt")
-         (require racket/regexp)
+         "sampling.rkt"
+         "programs.rkt")
+
 
 (load-herbie-builtins)
 
@@ -78,13 +79,7 @@
                       (λ ()
                         (with-check-info (['lhs v1] ['rhs v2])
                                          (check-eq? (ulp-difference v1 v2 (context-repr ctx)) 1))))))
-(define (var-nums px)
-        (define num-vars 0)
-        (define patterns (list #px"a" #px"b" #px"c" #px"d" #px"x" #px"y"))
-        (for ([pattern patterns])
-        (when (pattern-matches? pattern px)
-        (+ num-vars 1) ))
-        )
+
 
 
 (define (check-rule-inverse test-rule rules-hash)
@@ -94,7 +89,7 @@
 
   (for ([rule-test rules])
     (match-define (rule name* p1* p2* env* out*) rule-test)
-    (when (not (equal? (var-nums p1) (var-nums p2)))
+    (when (not (equal? p1  p2))
     (hash-remove! rules-hash name*)
     (set! inv #t))
     (when (and (equal? p1 p2*) (equal? p1* p2)) 
@@ -106,7 +101,7 @@
           )
     
 
-
+  (displayln (free-variables p1))
   (when (equal? inv #f)
     (displayln (format "name: ~a " name ))
     ))
