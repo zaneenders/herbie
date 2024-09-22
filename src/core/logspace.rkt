@@ -252,13 +252,4 @@
     [(list op args ...) (cons (op->logop op) (map expr->logfl args))]
     [sym sym]))
 
-(define x (flonum->logfl 2e+103))
 (define 1.l (flonum->logfl 1.0))
-(define 2.l (flonum->logfl 2.0))
-
-(define x+1 (log+ x 1.l))
-(define 1/x+1 (log/ 1.l x+1))
-
-(define 2/x (log/ 2.l x))
-
-(define res (log- 1/x+1 2/x))

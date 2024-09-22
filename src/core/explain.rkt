@@ -168,8 +168,8 @@
 
          (define cond-x (abs (/ xfl (+ xfl yfl))))
          (define cond-y (abs (/ yfl (+ xfl yfl))))
-         ;(define cond-x.l (logabs (log/ xlog (log+ xlog ylog))))
-         ;(define cond-y.l (logabs (log/ ylog (log+ xlog ylog))))
+         (define cond-x.l (logabs (log/ xlog (log+ xlog ylog))))
+         (define cond-y.l (logabs (log/ ylog (log+ xlog ylog))))
 
          (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
          (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
@@ -198,10 +198,10 @@
 
            ; High condition number:
            ; CN(+, x, y) = |x / x + y|
-           [(or (> cond-x 100) (> cond-y 100)) (mark-erroneous! subexpr 'cancellation)]
+           [(or (log> cond-x.l 100.l) (log> cond-y.l 100.l)) (mark-erroneous! subexpr 'cancellation)]
 
            ; Maybe
-           [(or (> cond-x 32) (> cond-y 32)) (mark-maybe! subexpr 'cancellation)]
+           [(or (log> cond-x.l 32.l) (log> cond-y.l 32.l)) (mark-maybe! subexpr 'cancellation)]
            [else #f])]
 
         [(list (or '-.f64 '-.f32) x-ex y-ex)
@@ -213,6 +213,8 @@
 
          (define cond-x (abs (/ xfl (- xfl yfl))))
          (define cond-y (abs (/ yfl (- xfl yfl))))
+         (define cond-x.l (logabs (log/ xlog (log- xlog ylog))))
+         (define cond-y.l (logabs (log/ ylog (log- xlog ylog))))
 
          (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
          (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
@@ -240,10 +242,10 @@
 
            ; High condition number:
            ; CN(+, x, y) = |x / x - y|
-           [(or (> cond-x 100) (> cond-y 100)) (mark-erroneous! subexpr 'cancellation)]
+           [(or (log> cond-x.l 100.l) (log> cond-y.l 100.l)) (mark-erroneous! subexpr 'cancellation)]
 
            ; Maybe
-           [(or (> cond-x 32) (> cond-y 32)) (mark-maybe! subexpr 'cancellation)]
+           [(or (log> cond-x.l 32.l) (log> cond-y.l 32.l)) (mark-maybe! subexpr 'cancellation)]
            [else #f])]
 
         [(list (or 'sin.f64 'sin.f32) x-ex)
@@ -252,16 +254,19 @@
          (match-define (logfl xfl xs xe) xlog)
          (define cot-x (abs (/ 1.0 (tan xfl))))
          (define cond-no (* (abs xfl) cot-x))
+
+         (define cot-x.l (logabs (log/ 1.l (logtan xlog))))
+         (define cond-no.l (log* (logabs xlog) cot-x.l))
          (cond
            [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
 
-           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-erroneous! subexpr 'sensitivity)]
+           [(and (log> cond-no.l 100.l) (log> (logabs xlog) 100.l)) (mark-erroneous! subexpr 'sensitivity)]
 
-           [(and (> cond-no 100) (> cot-x 100)) (mark-erroneous! subexpr 'cancelation)]
+           [(and (log> cond-no.l 100.l) (log> cot-x.l 100.l)) (mark-erroneous! subexpr 'cancelation)]
 
-           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-maybe! subexpr 'sensitivity)]
+           [(and (log> cond-no.l 100.l) (log> (logabs xlog) 100.l)) (mark-maybe! subexpr 'sensitivity)]
 
-           [(and (> cond-no 32) (> cot-x 32)) (mark-maybe! subexpr 'cancellation)]
+           [(and (log> cond-no.l 32.l) (log> cot-x.l 32.l)) (mark-maybe! subexpr 'cancellation)]
 
            [else #f])]
 
