@@ -20,6 +20,9 @@
 (provide explain
          actual-errors)
 
+(define 100.l (flonum->logfl 100.0))
+(define 32.l (flonum->logfl 32.0))
+
 (define *top-3* (make-parameter #f))
 
 (define MAX-EXP 1023)
@@ -165,6 +168,8 @@
 
          (define cond-x (abs (/ xfl (+ xfl yfl))))
          (define cond-y (abs (/ yfl (+ xfl yfl))))
+         ;(define cond-x.l (logabs (log/ xlog (log+ xlog ylog))))
+         ;(define cond-y.l (logabs (log/ ylog (log+ xlog ylog))))
 
          (define x.eps (+ 127 (bigfloat-exponent (exacts-ref x-ex))))
          (define y.eps (+ 127 (bigfloat-exponent (exacts-ref y-ex))))
@@ -546,13 +551,13 @@
   (define explanations-table
     (for/list ([(key val) (in-dict expls->points)]
                #:unless (zero? (length val)))
-      (define expr (car key))
+      (define subexpr (car key))
       (define expl (cdr key))
       (define err-count (length val))
       (define maybe-count (length (hash-ref maybe-expls->points key '())))
-      (define flow-list (make-flow-table oflow-hash uflow-hash expr expl))
+      (define flow-list (make-flow-table oflow-hash uflow-hash subexpr expl))
 
-      (list (~a (car expr)) (~a expr) (~a expl) err-count maybe-count flow-list)))
+      (list (~a (car subexpr)) (~a subexpr) (~a expl) err-count maybe-count flow-list)))
 
   (define sorted-explanations-table (take-top-n (sort explanations-table > #:key fourth)))
 

@@ -89,8 +89,8 @@
   (if (log<= A B) A B))
 
 (define (log+ A B)
-  (define P (logmax A B))
-  (define Q (logmin A B))
+  (define P (if (log>= (logabs A) (logabs B)) A B))
+  (define Q (if (log< (logabs A) (logabs B)) A B))
   (match-define (logfl a sa ea) P)
   (match-define (logfl b sb eb) Q)
   (define x (- eb ea))
@@ -251,3 +251,14 @@
     [(list (or 'PI.f64 'PI.f32 'E.f64 'E.f32)) (flonum->logfl ((impl-info (first expr) 'fl)))]
     [(list op args ...) (cons (op->logop op) (map expr->logfl args))]
     [sym sym]))
+
+(define x (flonum->logfl 2e+103))
+(define 1.l (flonum->logfl 1.0))
+(define 2.l (flonum->logfl 2.0))
+
+(define x+1 (log+ x 1.l))
+(define 1/x+1 (log/ 1.l x+1))
+
+(define 2/x (log/ 2.l x))
+
+(define res (log- 1/x+1 2/x))
