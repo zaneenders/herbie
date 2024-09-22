@@ -276,25 +276,29 @@
          (match-define (logfl xfl xs xe) xlog)
          (define tan-x (abs (tan xfl)))
          (define cond-no (* (abs xfl) tan-x))
+
+         (define tan-x.l (logabs (logtan xlog)))
+         (define cond-no.l (log* (logabs xlog) tan-x.l))
+
          (cond
            ;[(and (bfinfinite? x) (not (bfnan? subexpr-val))) (mark-erroneous! subexpr 'oflow-rescue)]
            [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
 
            ; [(and (bf> cond-no cond-thres) (bf> (bfabs x) cond-thres))
            ;  (mark-erroneous! subexpr 'sensitivity)]
-           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-erroneous! subexpr 'sensitivity)]
+           [(and (log> cond-no.l 100.l) (log> (logabs xlog) 100.l)) (mark-erroneous! subexpr 'sensitivity)]
 
            ; [(and (bf> cond-no cond-thres) (bf> cot-x cond-thres))
            ;  (mark-erroneous! subexpr 'cancellation)]
-           [(and (> cond-no 100) (> tan-x 100)) (mark-erroneous! subexpr 'cancelation)]
+           [(and (log> cond-no.l 100.l) (log> tan-x.l 100.l)) (mark-erroneous! subexpr 'cancelation)]
 
            ; [(and (bf> cond-no cond-thres) (bf> (bfabs x) cond-thres))
            ;  (mark-erroneous! subexpr 'sensitivity)]
-           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-maybe! subexpr 'sensitivity)]
+           [(and (log> cond-no.l 32.l) (log> (logabs xlog) 32.l)) (mark-maybe! subexpr 'sensitivity)]
 
            ; [(and (bf> cond-no cond-thres) (bf> cot-x cond-thres))
            ;  (mark-erroneous! subexpr 'cancellation)]
-           [(and (> cond-no 32) (> tan-x 32)) (mark-maybe! subexpr 'cancellation)]
+           [(and (log> cond-no.l 32.l) (log> tan-x.l 32.l)) (mark-maybe! subexpr 'cancellation)]
 
            [else #f])]
 
