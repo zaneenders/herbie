@@ -419,7 +419,7 @@
          (define x (exacts-ref x-ex))
          (define xlog (logfls-ref x-ex))
          (match-define (logfl xfl xs xe) xlog)
-         (define cond-num.l (logabs (log/ (lf 1.0) xlog)))
+         (define cond-num.l (logabs (log/ 1.l xlog)))
          (define cond-num (abs (/ 1.0 xfl)))
 
          (cond
@@ -436,8 +436,8 @@
 
            ; High Condition Number:
            ; CN(log, x) = |1 / log(x)|
-           [(> cond-num 100) (mark-erroneous! subexpr 'sensitivity)]
-           [(> cond-num 32) (mark-maybe! subexpr 'sensitivity)]
+           [(log> cond-num.l 100.l) (mark-erroneous! subexpr 'sensitivity)]
+           [(log> cond-num.l 32.l) (mark-maybe! subexpr 'sensitivity)]
 
            [else #f])]
 
@@ -459,9 +459,9 @@
 
            ; High Condition Number:
            ; CN(exp, x) = |x|
-           [(> (abs xfl) 100) (mark-erroneous! subexpr 'sensitivity)]
+           [(log> (logabs xlog) 100.l) (mark-erroneous! subexpr 'sensitivity)]
 
-           [(> (abs xfl) 32) (mark-maybe! subexpr 'sensitivity)]
+           [(log> (logabs xlog) 32.l) (mark-maybe! subexpr 'sensitivity)]
 
            [else #f])]
 
