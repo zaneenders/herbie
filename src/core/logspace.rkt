@@ -123,6 +123,13 @@
     #true
     (* a (fllog2 euler.0))))
 
+(define (logexpt A B)
+  (match-define (logfl a sa ea) A)
+  (match-define (logfl b sb eb) B)
+  (logfl (exp a)
+    (>= (expt a b) 0.0)
+    (* a (fllog2 b))))
+
 (define (logsqrt A)
   (match-define (logfl a sa ea) A)
   (logfl (sqrt a)
@@ -193,7 +200,7 @@
     ['log/ log/]
     ['logln logln]
     ['logexp logexp]
-    ; ['logexpt logexpt]
+    ['logexpt logexpt]
     ['logsin logsin]
     ['logcos logcos]
     ['logtan logtan]

@@ -478,6 +478,9 @@
          (define cond-x (abs yfl))
          (define cond-y (abs (* yfl (log xfl))))
 
+         (define cond-x.l (logabs ylog))
+         (define cond-y.l (logabs (log* ylog (logln xlog))))
+
          (cond
            ;; Hallucination:
            ;; x has a large exponent and y is 1. The ylogx is large but there is
@@ -517,10 +520,10 @@
 
            [(and (overflow? xlog) (<= se MAX-EXP)) (mark-erroneous! subexpr 'oflow-rescue)]
 
-           [(and (or (> cond-x 100) (> cond-y 100)) (not (constant? y-ex)))
+           [(and (or (log> cond-x.l 100.l) (log> cond-y.l 100.l)) (not (constant? y-ex)))
             (mark-erroneous! subexpr 'sensitivity)]
 
-           [(and (or (> cond-x 32) (> cond-y 32)) (not (constant? y-ex)))
+           [(and (or (log> cond-x.l 32.l) (log> cond-y.l 32.l)) (not (constant? y-ex)))
             (mark-maybe! subexpr 'sensitivity)]
 
            [else #f])]
