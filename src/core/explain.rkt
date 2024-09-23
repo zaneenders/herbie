@@ -311,13 +311,18 @@
          (define cond-hlf (abs (+ tan-x cot-x)))
          (define cond-no (* (abs xfl) cond-hlf))
 
+         (define tan-x.l (logtan xlog))
+         (define cot-x.l (log/ 1.l tan-x.l))
+         (define cond-hlf.l (logabs (log+ tan-x.l cot-x.l)))
+         (define cond-no.l (log* (logabs xlog) cond-hlf.l))
+
          (cond
            [(overflow? xlog) (mark-erroneous! subexpr 'oflow-rescue)]
-           [(and (> cond-no 100) (> (abs xfl) 100)) (mark-erroneous! subexpr 'sensitivity)]
-           [(and (> cond-no 100) (> cond-hlf 100)) (mark-erroneous! subexpr 'cancellation)]
+           [(and (log> cond-no.l 100.l) (log> (logabs xlog) 100.l)) (mark-erroneous! subexpr 'sensitivity)]
+           [(and (log> cond-no.l 100.l) (log> cond-hlf.l 100.l)) (mark-erroneous! subexpr 'cancellation)]
 
-           [(and (> cond-no 32) (> (abs xfl) 32)) (mark-maybe! subexpr 'sensitivity)]
-           [(and (> cond-no 32) (> cond-hlf 32)) (mark-maybe! subexpr 'cancellation)]
+           [(and (log> cond-no.l 32.l) (log> (logabs xlog) 32.l)) (mark-maybe! subexpr 'sensitivity)]
+           [(and (log> cond-no.l 32.l) (log> cond-hlf.l 32.l)) (mark-maybe! subexpr 'cancellation)]
            [else #f])]
 
         [(list (or 'sqrt.f64 'sqrt.f32) x-ex)
