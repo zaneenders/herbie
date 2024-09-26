@@ -104,11 +104,12 @@
   (match-define (rule name p1 p2 env out) test-rule)
   (define inv #f)
   (define rules (hash-values rules-hash))
-
+  (if (= (length (free-variables p1)) (length (free-variables p1)))
   (for ([rule-test rules])
     (match-define (rule name* p1* p2* env* out*) rule-test)
     ;(displayln (format "RuleTest: ~a = ~a -> ~a" name p1 p2))
     ;(displayln (format "RuleTest: ~a = ~a -> ~a" name* p1* p2*))
+    
     (when (and (equal? p1 p2*) (equal? p1* p2))
       ;;; (displayln (format "Rule 1: ~a = ~a -> ~a" name p1 p2))
       ;;; (displayln (format "Rule 2: ~a = ~a -> ~a" name* p1* p2*))
@@ -138,7 +139,8 @@
           ;;; (displayln (format "Rule 2-rep: ~a = ~a -> ~a" name* p1* p2*))
           (hash-remove! rules-hash name*)
           (hash-remove! rules-hash name)
-          (set! inv #t))))))
+          (set! inv #t)))))
+          (hash-remove! rules-hash name)))
 
 (define (check-rule-fp-safe test-rule)
   (match-define (rule name p1 p2 itypes repr) test-rule)

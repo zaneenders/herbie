@@ -38,7 +38,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; rules ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-ruleset* bool-reduce
-                 (bools simplify fp-safe )
+                 (bools simplify fp-safe)
                  #:type ([a bool] [b bool])
                  [not-true (not (TRUE)) (FALSE)]
                  [not-false (not (FALSE)) (TRUE)]
@@ -55,3 +55,21 @@
                  [or-false-l (or (FALSE) a) a]
                  [or-false-r (or a (FALSE)) a]
                  [or-same (or a a) a])
+
+(define-ruleset* bool-expand
+                 (bools simplify fp-safe)
+                 #:type ([a bool] [b bool])
+                 ;or
+                 [or-false-r-rev a (or a (FALSE))]
+                 [or-false-l-rev a (or (FALSE) a)]
+                 [or-same-rev a (or a a)]
+                 ;not
+                 [not-false-rev (TRUE) (not (FALSE))]
+                 [not-true-rev (FALSE) (not (TRUE))]
+                 [not-and-rev (or (not a) (not b)) (not (and a b))]
+                 [not-or-rev (and (not a) (not b)) (not (or a b))]
+                 [not-not-rev a (not (not a))]
+                 ;and
+                 [and-true-r-rev a (and a (TRUE))]
+                 [and-true-l-rev a (and (TRUE) a)]
+                 [and-same-rev a (and a a)])
