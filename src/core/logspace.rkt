@@ -9,8 +9,7 @@
 (provide (all-defined-out))
 
 (define MAX-EXP 1023)
-(define (representable? e)
-  (and (not (nan? e)) (< (abs e) (MAX-EXP . + . 1))))
+
 (define (set-sign s num)
   (if s num (- num)))
 
@@ -35,17 +34,38 @@
 
 (define lf flonum->logfl)
 
+(define max.lf (lf +max.0))
+(define min.lf (lf +min.0))
+
 (define (lf-normalize lf)
   (match-define (logfl x s e) lf)
   (if (or (nan? x) (zero? x) (infinite? x)) (logfl (set-sign s (flexp2 e)) s e) lf))
 
-(define (overflow? xl)
-  (match-define (logfl x s e) xl)
-  (and (or (infinite? x) (nan? x)) (> (abs e) MAX-EXP)))
+; (define (overflow? xl [threshold MAX-EXP])
+;   (match-define (logfl x s e) xl)
+;   (and (or (infinite? x) (nan? x)) (< (abs e) threshold)))
 
-(define (underflow? xl)
-  (match-define (logfl x s e) xl)
-  (and (zero? x) (> (abs e) MAX-EXP)))
+; (define (underflow? xl [threshold MAX-EXP])
+;   (match-define (logfl x s e) xl)
+;   (and (zero? x) (< (abs e) threshold)))
+
+; (define (overflow-cnd? xl cnd)
+;   (match-define (logfl x s e) xl)
+;   (and (or (infinite? x) (nan? x)) cnd))
+
+; (define (underflow-cnd? xl cnd)
+;   (match-define (logfl x s e) xl)
+;   (and (zero? x) cnd))
+
+(define (overflowed? X)
+  (log> (logabs X) max.lf))
+
+(define (underflowed? X)
+  (log< (logabs X) min.lf))
+
+(define (representable? X)
+  (and (not (overflowed? X))
+       (not (underflowed? X))))
 
 (define (exact-zero? xl)
   (match-define (logfl x s e) xl)
