@@ -4,7 +4,7 @@ help:
 	@echo "Type 'make install' to install Herbie"
 	@echo "Then type 'racket -l herbie web' to run it."
 
-install: clean egg-herbie update
+install: clean dd egg-herbie update
 
 clean:
 	raco pkg remove --force --no-docs herbie && echo "Uninstalled old herbie" || :
@@ -13,6 +13,10 @@ clean:
 	raco pkg remove --force --no-docs egg-herbie-windows && echo "Uninstalled old egg-herbie" || :
 	raco pkg remove --force --no-docs egg-herbie-osx && echo "Uninstalled old egg-herbie" || :
 	raco pkg remove --force --no-docs egg-herbie-macosm1 && echo "Uninstalled old egg-herbie" || :
+	rm -rf QD/Makefile QD/config.h QD/config.log QD/config.status QD/config/Makefile QD/fortran/.deps
+	rm -rf QD/fotran/Makefile QD/fortran/second.f QD/include/Makefile QD/include/qd/qd_config.h QD/include/qd/stamp-h2
+	rm -rf QD/libtool QD/qd-config QD/src/.deps QD/src/.libs QD/stamp-h1 QD/tests/.deps
+
 
 update:
 	raco pkg install --skip-installed --no-docs --auto --name herbie src/
@@ -27,6 +31,12 @@ egg-herbie:
 	raco pkg remove --force --no-docs egg-herbie-osx && echo "Warning: uninstalling egg-herbie and reinstalling local version" || :
 	raco pkg remove --force --no-docs egg-herbie-macosm1 && echo "Warning: uninstalling egg-herbie and reinstalling local version" || :
 	raco pkg install ./egg-herbie
+
+dd:
+	cd QD && ./configure
+	$(MAKE) -C QD
+	g++ -shared -o QD/src/.libs/libqd.so QD/src/*.o
+	g++ -dynamiclib -o QD/src/.libs/libqd.dylib QD/src/*.o
 
 distribution: minimal-distribution
 	cp -r bench herbie-compiled/
