@@ -13,7 +13,7 @@
 ;; Example usage
 (print-folder-contents "../../QD/src/.libs")
 
-(define qd-lib (ffi-lib "../../QD/src/.libs/libqd"))
+(define qd-lib (ffi-lib "./../../QD/src/.libs/libqd"))
 
 (define log2-hi 6.931471805599452862e-01)
 (define log2-lo 2.319046813846299558e-17)
