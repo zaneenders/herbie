@@ -15,7 +15,8 @@
          "../syntax/types.rkt"
          "../utils/common.rkt"
          "../utils/alternative.rkt"
-         "../utils/float.rkt")
+         "../utils/float.rkt"
+         "dd.rkt")
 
 (provide explain
          actual-errors)
@@ -94,6 +95,8 @@
   (values subexprs repr-hash subexprs-fn subexprs-log))
 
 (define (predict-errors ctx pctx subexprs-list repr-hash subexprs-fn subexprs-log)
+  (let-values ([(x1 x2) (dd+ 1.0 0.0 1e-100 0.0)])
+    (eprintf "dd+: ~a ~a\n" x1 x2))
   (define error-count-hash (make-hash (map (lambda (x) (cons x '())) subexprs-list)))
   (define uflow-hash (make-hash))
   (define oflow-hash (make-hash))
