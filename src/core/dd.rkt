@@ -6,6 +6,13 @@
 
 (provide (all-defined-out))
 
+(define (print-folder-contents folder-path)
+  (for ([file (directory-list folder-path)])
+    (displayln file)))
+
+;; Example usage
+(print-folder-contents "../../QD/src/.libs")
+
 (define qd-lib (ffi-lib "../../QD/src/.libs/libqd"))
 
 (define log2-hi 6.931471805599452862e-01)
