@@ -11,7 +11,8 @@
          "programs.rkt"
          "rules.rkt"
          "simplify.rkt"
-         "taylor.rkt")
+         "taylor.rkt"
+         "batch.rkt")
 
 (provide generate-candidates)
 
@@ -39,7 +40,8 @@
         `((,lowering-rules . ((iteration . 1) (scheduler . simple))))))
 
   ; run egg
-  (define runner (make-egg-runner (map alt-expr approxs) reprs schedule))
+  (define batch (progs->batch (map alt-expr approxs)))
+  (define runner (make-egg-runner batch (batch-roots batch) reprs schedule))
   (define simplification-options
     (simplify-batch runner
                     (typed-egg-extractor
@@ -88,7 +90,7 @@
                 [altn (in-list altns)]
                 [fv (in-list free-vars)]
                 #:when (member var fv)) ; check whether var exists in expr at all
-            (for ([_ (in-range (*taylor-order-limit*))])
+            (for ([i (in-range (*taylor-order-limit*))])
               (define gen (genexpr))
               (unless (spec-has-nan? gen)
                 (sow (alt gen `(taylor ,name ,var) (list altn) '())))))
@@ -109,7 +111,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; Recursive Rewrite ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (run-rr altns)
+(define (run-rr altns global-batch)
   (timeline-event! 'rewrite)
 
   ; generate required rules
@@ -118,7 +120,9 @@
   (define lowering-rules (platform-lowering-rules))
 
   (define extractor
-    (typed-egg-extractor (if (*egraph-platform-cost*) platform-egg-cost-proc default-egg-cost-proc)))
+    (typed-egg-batch-extractor
+     (if (*egraph-platform-cost*) platform-egg-cost-proc default-egg-cost-proc)
+     global-batch))
 
   ; egg schedule (3-phases for mathematical rewrites and implementation selection)
   (define schedule
@@ -130,16 +134,19 @@
   (define exprs (map alt-expr altns))
   (define reprs (map (curryr repr-of (*context*)) exprs))
   (timeline-push! 'inputs (map ~a exprs))
-  (define runner (make-egg-runner exprs reprs schedule #:context (*context*)))
-  (define variantss (run-egg runner `(multi . ,extractor)))
+  (define batch (progs->batch exprs))
+  (define runner (make-egg-runner batch (batch-roots batch) reprs schedule #:context (*context*)))
+  ; batchrefss is a (listof (listof batchref))
+  (define batchrefss (run-egg runner `(multi . ,extractor)))
 
   ; apply changelists
   (define rewritten
     (reap [sow]
-          (for ([variants (in-list variantss)]
+          (for ([batchrefs (in-list batchrefss)]
                 [altn (in-list altns)])
-            (for ([variant (in-list (remove-duplicates variants))])
-              (sow (alt variant (list 'rr runner #f #f) (list altn) '()))))))
+            (for ([batchref* (in-list batchrefs)])
+              (sow (alt batchref* (list 'rr runner #f #f) (list altn) '()))))))
+
   (timeline-push! 'outputs (map (compose ~a alt-expr) rewritten))
   (timeline-push! 'count (length altns) (length rewritten))
   rewritten)
@@ -147,14 +154,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; Public API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (generate-candidates exprs)
+  ; Batch to where we will extract everything
+  ; Roots of this batch are constantly updated
+  (define global-batch (progs->batch exprs))
+
   ; Starting alternatives
   (define start-altns
     (for/list ([expr (in-list exprs)])
       (define repr (repr-of expr (*context*)))
       (alt expr (list 'patch expr repr) '() '())))
+
   ; Series expand
   (define approximations (if (flag-set? 'generate 'taylor) (run-taylor start-altns) '()))
   ; Recursive rewrite
-  (define rewritten (if (flag-set? 'generate 'rr) (run-rr start-altns) '()))
+  (define rewritten (if (flag-set? 'generate 'rr) (run-rr start-altns global-batch) '()))
+
+  ; deref everything in rewritten
+  (set! rewritten
+        (for/list ([r (in-list rewritten)])
+          (alt (batchref->expr (alt-expr r)) (alt-event r) (alt-prevs r) (alt-preprocessing r))))
 
   (append approximations rewritten))

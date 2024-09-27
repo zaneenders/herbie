@@ -1,10 +1,7 @@
 #lang racket
 
 (require openssl/sha1)
-(require (only-in xml write-xexpr)
-         json)
-(require net/url)
-(require web-server/http)
+(require (only-in xml write-xexpr))
 
 (require "sandbox.rkt"
          "../core/points.rkt"
@@ -35,7 +32,7 @@
          start-job
          wait-for-job
          start-job-server
-         check-and-send
+         write-results-to-disk
          *demo?*
          *demo-output*)
 
@@ -60,24 +57,6 @@
                     #:profile? [profile? #f]
                     #:timeline-disabled? [timeline-disabled? #f])
   (herbie-command command test seed pcontext profile? timeline-disabled?))
-
-;; TODO move these side worker/manager
-(define (check-and-send path job-id page)
-  (define result-hash (get-results-for job-id))
-  (cond
-    [(set-member? (all-pages result-hash) page)
-     ;; Write page contents to disk
-     (when (*demo-output*)
-       (write-results-to-disk result-hash path))
-     (response 200
-               #"OK"
-               (current-seconds)
-               #"text"
-               (list (header #"X-Job-Count" (string->bytes/utf-8 (~a (job-count)))))
-               (λ (out)
-                 (with-handlers ([exn:fail? (page-error-handler result-hash page out)])
-                   (make-page page out result-hash (*demo-output*) #f))))]
-    [else #f]))
 
 (define (write-results-to-disk result-hash path)
   (make-directory (build-path (*demo-output*) path))
@@ -368,7 +347,7 @@
       ['errors (make-error-result herbie-result job-id)]
       ['exacts (make-exacts-result herbie-result job-id)]
       ['improve (make-improve-result herbie-result test job-id)]
-      ['local-error (make-local-error-result herbie-result test job-id)]
+      ['local-error (make-local-error-result herbie-result job-id)]
       ['explanations (make-explanation-result herbie-result job-id)]
       ['sample (make-sample-result herbie-result test job-id)]
       [_ (error 'compute-result "unknown command ~a" kind)]))
@@ -386,25 +365,15 @@
           'path
           (make-path job-id)))
 
-(define (make-local-error-result herbie-result test job-id)
-  (define expr (prog->fpcore (test-input test) (test-context test)))
-  (define local-error (job-result-backend herbie-result))
-  ;; TODO: potentially unsafe if resugaring changes the AST
-  (define tree
-    (let loop ([expr expr]
-               [err local-error])
-      (match expr
-        [(list op args ...)
-         ;; err => (List (listof Integer) List ...)
-         (hasheq 'e
-                 (~a op)
-                 'avg-error
-                 (format-bits (errors-score (first err)))
-                 'children
-                 (map loop args (rest err)))]
-        ;; err => (List (listof Integer))
-        [_ (hasheq 'e (~a expr) 'avg-error (format-bits (errors-score (first err))) 'children '())])))
-  (hasheq 'command (get-command herbie-result) 'tree tree 'job job-id 'path (make-path job-id)))
+(define (make-local-error-result herbie-result job-id)
+  (hasheq 'command
+          (get-command herbie-result)
+          'tree
+          (job-result-backend herbie-result)
+          'job
+          job-id
+          'path
+          (make-path job-id)))
 
 (define (make-sample-result herbie-result test job-id)
   (define pctx (job-result-backend herbie-result))
