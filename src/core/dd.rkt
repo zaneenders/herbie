@@ -11,7 +11,7 @@
     (displayln file)))
 
 ;; Example usage
-(print-folder-contents "../../QD/src/.libs")
+(print-folder-contents "./../../QD/src/.libs")
 
 (define qd-lib (ffi-lib "./../../QD/src/.libs/libqd"))
 
