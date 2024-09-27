@@ -13,9 +13,7 @@ clean:
 	raco pkg remove --force --no-docs egg-herbie-windows && echo "Uninstalled old egg-herbie" || :
 	raco pkg remove --force --no-docs egg-herbie-osx && echo "Uninstalled old egg-herbie" || :
 	raco pkg remove --force --no-docs egg-herbie-macosm1 && echo "Uninstalled old egg-herbie" || :
-	rm -rf QD/Makefile QD/config.h QD/config.log QD/config.status QD/config/Makefile QD/fortran/.deps
-	rm -rf QD/fotran/Makefile QD/fortran/second.f QD/include/Makefile QD/include/qd/qd_config.h QD/include/qd/stamp-h2
-	rm -rf QD/libtool QD/qd-config QD/src/.deps QD/src/.libs QD/stamp-h1 QD/tests/.deps
+	$(MAKE) -C QD clean
 
 
 update:
@@ -33,10 +31,8 @@ egg-herbie:
 	raco pkg install ./egg-herbie
 
 dd:
-	cd QD && ./configure
+	cd QD && ./configure --enable-shared
 	$(MAKE) -C QD
-	g++ -shared -o QD/src/.libs/libqd.so QD/src/*.o
-	g++ -dynamiclib -o QD/src/.libs/libqd.dylib QD/src/*.o
 
 distribution: minimal-distribution
 	cp -r bench herbie-compiled/
