@@ -5,7 +5,8 @@
          "../utils/timeline.rkt"
          "../utils/float.rkt"
          "batch.rkt"
-         "logspace.rkt")
+         "logspace.rkt"
+         "ddlf.rkt")
 
 (provide compile-progs
          compile-prog)
@@ -67,14 +68,17 @@
   (define instructions
     (for/vector #:length (- (batch-length batch) num-vars)
                 ([node (in-vector (batch-nodes batch) num-vars)])
-
       (match node
         [(logfl f x e) (list (const node))]
+        [(ddlf r1 r2 s e1 e2) (list (const node))]
         [(literal value (app get-representation repr)) (list (const (real->repr value repr)))]
         [(list 'if c t f) (list if-proc c t f)]
         [(list op args ...)
          #:when (logop? op)
          (cons (logop op) args)]
+        [(list op args ...)
+         #:when (dlop? op)
+         (cons (dlop op) args)]
         [(list op args ...) (cons (impl-info op 'fl) args)])))
 
   (make-progs-interpreter (batch-vars batch) instructions (batch-roots batch)))

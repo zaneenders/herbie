@@ -182,6 +182,7 @@
      (values -inf.0 0.0)]
     [(and (ddnegative? y1 y2) (dd-inf? x1 x2))
      (values +inf.0 0.0)]
+    [()]
     [else
      (define a (list->f64vector (list x1 x2)))
      (define b (list->f64vector (list y1 y2)))

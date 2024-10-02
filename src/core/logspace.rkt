@@ -3,8 +3,7 @@
 (require math/base
          math/flonum
          racket/struct
-         "../syntax/syntax.rkt"
-         "../syntax/types.rkt")
+         "../syntax/syntax.rkt")
 
 (provide (all-defined-out))
 
@@ -16,7 +15,7 @@
 (struct logfl (r s e)
   #:methods gen:custom-write
   [(define write-proc
-     (make-constructor-style-printer (lambda (obj) 'logfl)
+     (make-constructor-style-printer (lambda (_) 'logfl)
                                      (lambda (obj)
                                        (list (logfl-r obj) (logfl-s obj) (logfl-e obj)))))])
 
@@ -124,12 +123,12 @@
 (define (log* A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (logfl (* a b) (not (xor a b)) (+ ea eb)))
+  (logfl (* a b) (not (xor sa sb)) (+ ea eb)))
 
 (define (log/ A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (logfl (/ a b) (not (xor a b)) (- ea eb)))
+  (logfl (/ a b) (not (xor sa sb)) (- ea eb)))
 
 (define (logln A)
   (match-define (logfl a sa ea) A)
@@ -146,7 +145,7 @@
 (define (logexpt A B)
   (match-define (logfl a sa ea) A)
   (match-define (logfl b sb eb) B)
-  (logfl (exp a)
+  (logfl (expt a)
     (>= (expt a b) 0.0)
     (* a (fllog2 b))))
 
