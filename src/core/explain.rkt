@@ -437,7 +437,7 @@
            ;; - overflows, nan could be rescued
            [(and (dloverflowed? x.dl) (dloverflowed? y.dl) (dlrepresentable? s.dl)) (mark-erroneous! subexpr 'o/o)]
            ;; - is large enough, inf overflow can be rescued
-           [(and (dloverflowed? x.dl) (representable? s.dl)) (mark-erroneous! subexpr 'o/n)]
+           [(and (dloverflowed? x.dl) (dlrepresentable? s.dl)) (mark-erroneous! subexpr 'o/n)]
            ;; - underflow, no rescue isdl possible
 
            ;; if the numerator is normal and the denominator:
