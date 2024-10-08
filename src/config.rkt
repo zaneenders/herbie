@@ -95,7 +95,7 @@
 ;;; Herbie internal parameters
 
 ;; Number of points to sample for evaluating program accuracy
-(define *num-points* (make-parameter 256))
+(define *num-points* (make-parameter 4))
 
 ;; Number of iterations of the core loop for improving program accuracy
 (define *num-iterations* (make-parameter 4))

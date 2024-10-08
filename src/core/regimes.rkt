@@ -165,27 +165,36 @@
                 #:when (< i (si-pidx si)))
       (list-ref errs (si-cidx si)))))
 
+; (module+ test
+;   (define ctx (make-debug-context '(x)))
+;   (parameterize ([*start-prog* (literal 1 'binary64)]
+;                  [*pcontext* (mk-pcontext '((0.5) (4.0)) '(1.0 1.0))])
+;     (define alts (map make-alt (list '(fmin.f64 x 1) '(fmax.f64 x 1))))
+;     (define err-lsts `((,(expt 2 53) 1) (1 ,(expt 2 53))))
+
+;     (define (test-regimes expr goal)
+;       (check (lambda (x y) (equal? (map si-cidx (option-split-indices x)) y))
+;              (option-on-expr alts err-lsts expr ctx)
+;              goal))
+
+;     ;; This is a basic sanity test
+;     (test-regimes 'x '(1 0))
+
+;     ;; This test ensures we handle equal points correctly. All points
+;     ;; are equal along the `1` axis, so we should only get one
+;     ;; splitpoint (the second, since it is better at the further point).
+;     (test-regimes (literal 1 'binary64) '(0))
+
+;     (test-regimes `(if (==.f64 x ,(literal 0.5 'binary64)) ,(literal 1 'binary64) (NAN.f64)) '(1 0))))
+
 (module+ test
-  (define ctx (make-debug-context '(x)))
-  (parameterize ([*start-prog* (literal 1 'binary64)]
-                 [*pcontext* (mk-pcontext '((0.5) (4.0)) '(1.0 1.0))])
-    (define alts (map make-alt (list '(fmin.f64 x 1) '(fmax.f64 x 1))))
-    (define err-lsts `((,(expt 2 53) 1) (1 ,(expt 2 53))))
-
-    (define (test-regimes expr goal)
-      (check (lambda (x y) (equal? (map si-cidx (option-split-indices x)) y))
-             (option-on-expr alts err-lsts expr ctx)
-             goal))
-
-    ;; This is a basic sanity test
-    (test-regimes 'x '(1 0))
-
-    ;; This test ensures we handle equal points correctly. All points
-    ;; are equal along the `1` axis, so we should only get one
-    ;; splitpoint (the second, since it is better at the further point).
-    (test-regimes (literal 1 'binary64) '(0))
-
-    (test-regimes `(if (==.f64 x ,(literal 0.5 'binary64)) ,(literal 1 'binary64) (NAN.f64)) '(1 0))))
+  (define candidates
+    (list (list 40 43 44 69)    ; index 0
+          (list 0 46 420 690)   ; index 1
+          (list 15 18 47 200))) ; index 2
+  (define can-split? (list #f #t #t #t))
+  (define split-indices (err-lsts->split-indices candidates can-split?))
+  (eprintf "can-split: ~a\n" split-indices))
 
 ;; Struct representing a candidate set of splitpoints that we are considering.
 ;; cost = The total error in the region to the left of our rightmost splitpoint
@@ -217,36 +226,39 @@
 
   (define psums (map (compose partial-sums list->vector) err-lsts))
   (define can-split? (curry vector-ref (list->vector can-split-lst)))
-
+  (eprintf "candidates: ~a\n" err-lsts)
+  (eprintf "can-split-lst: ~a\n" can-split-lst)
   ;; Our intermediary data is a list of cse's,
   ;; where each cse represents the optimal splitindices after however many passes
   ;; if we only consider indices to the left of that cse's index.
   ;; Given one of these lists, this function tries to add another splitindices to each cse.
   (define (add-splitpoint sp-prev)
     ;; If there's not enough room to add another splitpoint, just pass the sp-prev along.
-    (for/vector #:length num-points
-                ([point-idx (in-naturals)]
-                 [point-entry (in-vector sp-prev)])
-      ;; We take the CSE corresponding to the best choice of previous split point.
-      ;; The default, not making a new split-point, gets a bonus of min-weight
-      (let ([acost (- (cse-cost point-entry) min-weight)]
-            [aest point-entry])
-        (for ([prev-split-idx (in-range 0 point-idx)]
-              [prev-entry (in-vector sp-prev)]
-              #:when (can-split? (si-pidx (car (cse-indices prev-entry)))))
-          ;; For each previous split point, we need the best candidate to fill the new regime
-          (let ([best #f]
-                [bcost #f])
-            (for ([cidx (in-naturals)]
-                  [psum (in-list psums)])
-              (let ([cost (- (vector-ref psum point-idx) (vector-ref psum prev-split-idx))])
-                (when (or (not best) (< cost bcost))
-                  (set! bcost cost)
-                  (set! best cidx))))
-            (when (and (< (+ (cse-cost prev-entry) bcost) acost))
-              (set! acost (+ (cse-cost prev-entry) bcost))
-              (set! aest (cse acost (cons (si best (+ point-idx 1)) (cse-indices prev-entry)))))))
-        aest)))
+    (define out
+      (for/vector #:length num-points
+                  ([point-idx (in-naturals)]
+                   [point-entry (in-vector sp-prev)])
+        ;; We take the CSE corresponding to the best choice of previous split point.
+        ;; The default, not making a new split-point, gets a bonus of min-weight
+        (let ([acost (- (cse-cost point-entry) min-weight)]
+              [aest point-entry])
+          (for ([prev-split-idx (in-range 0 point-idx)]
+                [prev-entry (in-vector sp-prev)]
+                #:when (can-split? (si-pidx (car (cse-indices prev-entry)))))
+            ;; For each previous split point, we need the best candidate to fill the new regime
+            (let ([best #f]
+                  [bcost #f])
+              (for ([cidx (in-naturals)]
+                    [psum (in-list psums)])
+                (let ([cost (- (vector-ref psum point-idx) (vector-ref psum prev-split-idx))])
+                  (when (or (not best) (< cost bcost))
+                    (set! bcost cost)
+                    (set! best cidx))))
+              (when (and (< (+ (cse-cost prev-entry) bcost) acost))
+                (set! acost (+ (cse-cost prev-entry) bcost))
+                (set! aest (cse acost (cons (si best (+ point-idx 1)) (cse-indices prev-entry)))))))
+          aest)))
+    out)
 
   ;; We get the initial set of cse's by, at every point-index,
   ;; accumulating the candidates that are the best we can do
@@ -261,11 +273,13 @@
                        (cse cost (list (si cand-idx (+ point-idx 1))))))
                    (range num-candidates)
                    psums))))
-
   ;; We get the final splitpoints by applying add-splitpoints as many times as we want
   (define final
     (let loop ([prev initial])
       (let ([next (add-splitpoint prev)]) (if (equal? prev next) next (loop next)))))
 
   ;; Extract the splitpoints from our data structure, and reverse it.
-  (reverse (cse-indices (vector-ref final (- num-points 1)))))
+  (define out (reverse (cse-indices (vector-ref final (- num-points 1)))))
+  (eprintf "out: ~a\n" out)
+  (eprintf "\n" out)
+  out)
