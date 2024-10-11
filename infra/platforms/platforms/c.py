@@ -15,7 +15,7 @@ ternary_ops = ['fma']
 
 # C lang
 target_lang = 'c'
-compiler = 'clang'
+compiler = 'clang-18'
 c_flags = ['-std=gnu11', '-ffp-contract=off', '-O2']
 ld_flags = ['-lm']
 driver_name = 'main.c'
