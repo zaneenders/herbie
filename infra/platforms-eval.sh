@@ -67,7 +67,7 @@ function run() {
 # run $BENCH_DIR/hamming hamming $NUM_SEEDS
 # run $BENCH_DIR/mathematics mathematics $NUM_SEEDS
 
-run $BENCH_DIR/graphics graphics $NUM_SEEDS
+# run $BENCH_DIR/graphics graphics $NUM_SEEDS
 run $BENCH_DIR/hamming hamming $NUM_SEEDS
 run $BENCH_DIR/libraries libraries $NUM_SEEDS
 run $BENCH_DIR/mathematics mathematics $NUM_SEEDS
