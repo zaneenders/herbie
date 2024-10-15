@@ -51,6 +51,8 @@ function run() {
   key=$2
   num_runs=$3
 
+  set +e
+
   python3 $INFRA_DIR/platforms-eval.py \
     --key $key \
     --parallel $PARALLEL_SEEDS \
@@ -59,6 +61,9 @@ function run() {
     $bench \
     "$OUTDIR/platforms" \
     $num_runs
+  raco pkg remove --force --no-docs avx-herbie fdlimb-herbie vdt-herbie
+
+  set -e
 }
 
 # Run configs
@@ -67,21 +72,20 @@ function run() {
 # run $BENCH_DIR/hamming hamming $NUM_SEEDS
 # run $BENCH_DIR/mathematics mathematics $NUM_SEEDS
 
-# run $BENCH_DIR/graphics graphics $NUM_SEEDS
-run $BENCH_DIR/hamming hamming $NUM_SEEDS
-run $BENCH_DIR/libraries libraries $NUM_SEEDS
-run $BENCH_DIR/mathematics mathematics $NUM_SEEDS
-run $BENCH_DIR/numerics numerics $NUM_SEEDS
-run $BENCH_DIR/physics physics $NUM_SEEDS
-run $BENCH_DIR/haskell.fpcore haskell $NUM_SEEDS
-run $BENCH_DIR/regression.fpcore regression $NUM_SEEDS
+# Purposefully break to see if plugins are successfully uninstalled regardless
+run $BENCH_DIR/graphics graphics $NUM_SEEDS
+# run $BENCH_DIR/hamming hamming $NUM_SEEDS
+# run $BENCH_DIR/libraries libraries $NUM_SEEDS
+# run $BENCH_DIR/mathematics mathematics $NUM_SEEDS
+# run $BENCH_DIR/numerics numerics $NUM_SEEDS
+# run $BENCH_DIR/physics physics $NUM_SEEDS
+# run $BENCH_DIR/haskell.fpcore haskell $NUM_SEEDS
+# run $BENCH_DIR/regression.fpcore regression $NUM_SEEDS
 
 python3 $INFRA_DIR/platforms/cross-plot.py "$OUTDIR/platforms/output"
 
 echo "Finished platforms evaluation"
 date
-
-make clean
 
 # clean up cache and build files
 if [ -n "$RM_CACHE" ]; then
