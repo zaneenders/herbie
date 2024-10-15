@@ -61,7 +61,7 @@ function run() {
     $bench \
     "$OUTDIR/platforms" \
     $num_runs
-  raco pkg remove --force --no-docs avx-herbie fdlimb-herbie vdt-herbie
+  raco pkg remove --force --no-docs avx-herbie fdlibm-herbie vdt-herbie
 
   set -e
 }
