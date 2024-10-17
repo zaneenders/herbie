@@ -1208,9 +1208,7 @@
        (if (hash-has-key? duplicatesHash expr)
            (set! duplicates (cons expr duplicates))
            (hash-set! duplicatesHash expr 0)))
-     ;(displayln (format "duplicates:~a" duplicates))
      (remove-duplicates exprs)
-
      (define (run-rival pts)
        (for ([pt pts])
          ;(displayln pt)
@@ -1271,11 +1269,11 @@
           ; Checks both status and val-points
          (when (and (equal? (cdr val-point) (cdr val-point2))
                     (not (equal? (car val-point) (car val-point2))))
-           (displayln "__________________")
+           #| (displayln "__________________")
            (display "prog:")
            (displayln prog)
            (display "diff:")
-           (displayln diff)
+           (displayln diff) |#
            (when (not (equal? diff #f))
            (if (equal? (first diff) -0.0)
                (format "Expr 1: ~a Expr 2: ~a" (car val-point) (car val-point2));insert match statement to check for patterns ex- x+0 -> x
