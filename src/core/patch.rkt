@@ -134,7 +134,7 @@
   (define rules (real-rules (*rules*)))
   (define lifting-rules (platform-lifting-rules))
   (define lowering-rules (platform-lowering-rules))
-
+  (define simplify-rules (real-rules (*simplify-rules*)))
   (define extractor
     (typed-egg-batch-extractor
      (if (*egraph-platform-cost*) platform-egg-cost-proc default-egg-cost-proc)
@@ -144,7 +144,10 @@
   (define schedule
     `((,lifting-rules . ((iteration . 1) (scheduler . simple)))
       (,rules . ((node . ,(*node-limit*))))
-      (,lowering-rules . ((iteration . 1) (scheduler . simple)))))
+      (,lowering-rules . ((iteration . 1) (scheduler . simple)))
+      (,simplify-rules . ((node . ,(*node-limit*))))
+      (,simplify-rules . ((node . ,(*node-limit*))))
+      (,simplify-rules . ((node . ,(*node-limit*))))))
 
   ; run egg
   (define exprs (map (compose debatchref alt-expr) altns))
