@@ -2,7 +2,8 @@
 
 #lang racket
 
-(provide pattern-match
+(provide merge-bindings
+         pattern-match
          pattern-substitute)
 
 ;; Unions two bindings. Returns #f if they disagree.
@@ -11,7 +12,13 @@
        binding2
        (let/ec quit
                (for/fold ([binding binding1]) ([(k v) (in-dict binding2)])
-                 (dict-update binding k (λ (x) (if (equal? x v) v (quit #f))) v)))))
+                 (dict-update binding
+                              k
+                              (λ (x)
+                                (if (equal? x v)
+                                    v
+                                    (quit #f)))
+                              v)))))
 
 ;; Pattern matcher that returns a substitution or #f.
 ;; A substitution is an association list of symbols and expressions.

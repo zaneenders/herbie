@@ -52,7 +52,10 @@
 
 (define (timeline-push! key . values)
   (unless (*timeline-disabled*)
-    (define val (if (null? (cdr values)) (car values) values))
+    (define val
+      (if (null? (cdr values))
+          (car values)
+          values))
     (cond
       [(eq? *timeline-active-key* key)
        (set! *timeline-active-value* (cons val *timeline-active-value*))]
@@ -226,7 +229,8 @@
                  [expl false]
                  [count +]
                  [mcount +]
-                 [flows (const #f)])
+                 [flows (const #f)]
+                 [locations (const #f)])
 (define-timeline confusion #:custom (λ (x y) (list (map + (car x) (car y)))))
 (define-timeline total-confusion #:custom (λ (x y) (list (map + (car x) (car y)))))
 (define-timeline maybe-confusion #:custom (λ (x y) (list (map + (car x) (car y)))))
