@@ -1,12 +1,12 @@
 #lang racket
 
 (require racket/lazy-require)
-(require "utils/common.rkt"
-         "utils/multi-command-line.rkt"
-         "utils/errors.rkt"
+(require "api/sandbox.rkt"
          "syntax/load-plugin.rkt"
          "syntax/platform.rkt"
-         "api/sandbox.rkt")
+         "utils/common.rkt"
+         "utils/errors.rkt"
+         "utils/multi-command-line.rkt")
 
 ;; Load all the plugins
 (load-herbie-plugins)
@@ -125,7 +125,7 @@
     ("Disable a search flag (formatted category:name)."
      "See `+o/--enable` for the full list of search flags.")
     (define tf (string->flag flag))
-    (when (not tf)
+    (unless tf
       (raise-herbie-error "Invalid flag ~a" flag #:url "options.html"))
     (apply disable-flag! tf)]
    [("+o" "--enable")
@@ -137,7 +137,7 @@
             "\n" ;; 5 spaces is the padding inserted by `command-line`
             (map (curry format "     ~a\n") (default-flags->table))))
     (define tf (string->flag flag))
-    (when (not tf)
+    (unless tf
       (raise-herbie-error "Invalid flag ~a" flag #:url "options.html"))
     (apply enable-flag! tf)]
    #:subcommands [shell "Interact with Herbie from the shell" #:args () (run-shell)]
