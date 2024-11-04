@@ -120,14 +120,55 @@
 
 (define (manager-ask msg . args)
   (log "Asking manager: ~a, ~a.\n" msg args)
-  (match msg
-    ['wait (manager-ask-with-callback msg args)]
-    ['result (manager-ask-with-callback msg args)]
-    ['timeline (manager-ask-with-callback msg args)]
-    ['check (manager-ask-with-callback msg args)]
-    ['count (manager-ask-with-callback msg args)]
-    ['improve (manager-ask-with-callback msg args)]
-    [_ (place-channel-put manager (flatten (list msg args)))]))
+  (if manager
+      (match msg
+        ['wait (manager-ask-with-callback msg args)]
+        ['result (manager-ask-with-callback msg args)]
+        ['timeline (manager-ask-with-callback msg args)]
+        ['check (manager-ask-with-callback msg args)]
+        ['count (manager-ask-with-callback msg args)]
+        ['improve (manager-ask-with-callback msg args)]
+        [_ (place-channel-put manager (flatten (list msg args)))])
+      (match msg ; public commands
+        ['wait
+         (match-define (list hash-false job-id) args)
+         (hash-ref completed-work job-id)]
+        ['result
+         (match-define (list job-id) args)
+         (hash-ref completed-work job-id #f)]
+        ['timeline ; Blocks can't wait on a job well one in progress.
+         (match-define (list job-id) args)
+         (hash-ref completed-work job-id)]
+        ['check
+         (match-define (list job-id) args)
+         (if (hash-ref completed-work job-id #f) job-id #f)]
+        ['count (list 0 0)]
+        ['improve
+         (for/list ([(job-id result) (in-hash completed-work)]
+                    #:when (equal? (hash-ref result 'command) "improve"))
+           (get-table-data-from-hash result (make-path job-id)))]
+        ['start
+         (match-define (list hash-false command job-id) args)
+         (hash-set! completed-work job-id (herbie-do-server-job command job-id))])))
+
+(define (herbie-do-server-job command job-id)
+  (define herbie-result (wrapper-run-herbie command job-id))
+  (match-define (job-result kind test status time _ _ backend) herbie-result)
+  (define out-result
+    (match kind
+      ['alternatives (make-alternatives-result herbie-result test job-id)]
+      ['evaluate (make-calculate-result herbie-result job-id)]
+      ['cost (make-cost-result herbie-result job-id)]
+      ['errors (make-error-result herbie-result job-id)]
+      ['exacts (make-exacts-result herbie-result job-id)]
+      ['improve (make-improve-result herbie-result test job-id)]
+      ['local-error (make-local-error-result herbie-result job-id)]
+      ['explanations (make-explanation-result herbie-result job-id)]
+      ['sample (make-sample-result herbie-result test job-id)]
+      [_ (error 'compute-result "unknown command ~a" kind)]))
+  out-result)
+
+(define completed-work (make-hash))
 
 (define (manager-ask-with-callback msg args)
   (define-values (a b) (place-channel))
@@ -135,14 +176,15 @@
   (place-channel-get a))
 
 (define (is-server-up)
-  (not (sync/timeout 0 manager-dead-event)))
+  (if manager
+      (not (sync/timeout 0 manager-dead-event))
+      #f))
 
 (define (start-job-server job-cap)
-  (unless job-cap
-    (set! job-cap (processor-count)))
-  (define r (make-manager job-cap))
-  (set! manager-dead-event (place-dead-evt r))
-  (set! manager r))
+  (when job-cap
+    (define r (make-manager job-cap))
+    (set! manager-dead-event (place-dead-evt r))
+    (set! manager r)))
 
 (define manager #f)
 (define manager-dead-event #f)
@@ -208,7 +250,6 @@
    (parameterize ([current-error-port (open-output-nowhere)]) ; hide output
      (load-herbie-plugins))
    ; not sure if the above code is actaully needed.
-   (define completed-work (make-hash))
    (define busy-workers (make-hash))
    (define waiting-workers (make-hash))
    (define current-jobs (make-hash))
@@ -340,20 +381,7 @@
 (define (run-job job-info)
   (match-define (work manager worker-id job-id command) job-info)
   (log "run-job: ~a, ~a\n" worker-id job-id)
-  (define herbie-result (wrapper-run-herbie command job-id))
-  (match-define (job-result kind test status time _ _ backend) herbie-result)
-  (define out-result
-    (match kind
-      ['alternatives (make-alternatives-result herbie-result test job-id)]
-      ['evaluate (make-calculate-result herbie-result job-id)]
-      ['cost (make-cost-result herbie-result job-id)]
-      ['errors (make-error-result herbie-result job-id)]
-      ['exacts (make-exacts-result herbie-result job-id)]
-      ['improve (make-improve-result herbie-result test job-id)]
-      ['local-error (make-local-error-result herbie-result job-id)]
-      ['explanations (make-explanation-result herbie-result job-id)]
-      ['sample (make-sample-result herbie-result test job-id)]
-      [_ (error 'compute-result "unknown command ~a" kind)]))
+  (define out-result (herbie-do-server-job command job-id))
   (log "Job: ~a finished, returning work to manager\n" job-id)
   (place-channel-put manager (list 'finished manager worker-id job-id out-result)))
 
