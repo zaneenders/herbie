@@ -24,3 +24,7 @@ herbie-compiled/
 
 # Python
 .env/
+
+# Thesis
+/old-nightly
+/new-nightly
