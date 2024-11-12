@@ -226,8 +226,8 @@
     ;; If there's not enough room to add another splitpoint, just pass the sp-prev along.
     (define out
       (for/vector #:length num-points
-                  ([point-idx (in-naturals)]
-                   [point-entry (in-vector sp-prev)])
+        ([point-idx (in-naturals)]
+         [point-entry (in-vector sp-prev)])
         ;; We take the CSE corresponding to the best choice of previous split point.
         ;; The default, not making a new split-point, gets a bonus of min-weight
         (let ([acost (- (cse-cost point-entry) min-weight)]
@@ -255,7 +255,7 @@
   ;; by using only one candidate to the left of that point.
   (define initial
     (for/vector #:length num-points
-                ([point-idx (in-range num-points)])
+      ([point-idx (in-range num-points)])
       (argmin cse-cost
               ;; Consider all the candidates we could put in this region
               (map (λ (cand-idx cand-psums)
